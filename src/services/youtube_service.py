@@ -8,6 +8,9 @@ from typing import List, Optional
 from dataclasses import dataclass
 import sys
 
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
