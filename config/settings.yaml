@@ -1,0 +1,27 @@
+# Application Settings
+# Note: Environment variables will override these settings
+
+# Gemini AI Settings
+model_name: gemini-2.0-flash-exp
+
+# YouTube Settings
+playlist_url: https://www.youtube.com/playlist?list=PLCi3Q_-uGtdlCsFXHLDDHBSLyq4BkQ6gZ
+
+# Transcription Settings
+whisper_model: medium
+language: tr
+
+# Vector Database Settings
+embedding_model: sentence-transformers/altaidevorg/bge-m3-distill-8l
+vector_db_path: data/vector_db
+collection_name: youtube_transcripts
+
+# RAG Settings
+retrieval_k: 3
+similarity_threshold: 0.7
+
+# File Paths
+data_dir: data
+audio_dir: data/audio
+transcripts_dir: data/transcripts
+transcripts_json: data/transcripts.json

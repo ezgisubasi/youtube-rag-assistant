@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+import os
 
 class ProcessingStatus(Enum):
     """Processing status enumeration."""
@@ -67,32 +68,26 @@ class RAGResponse:
 
 @dataclass
 class AppConfig:
-    """Application configuration."""
-    # API Settings
+    """Application configuration - structure only, values from YAML."""
+    # API Settings (from environment only)
     gemini_api_key: str = ""
-    model_name: str = "gemini-2.0-flash-exp"
     
-    # YouTube Settings
+    # All other settings (from YAML files)
+    model_name: str = ""
     playlist_url: str = ""
-    
-    # Transcription Settings
-    whisper_model: str = "medium"
-    language: str = "tr"
-    
-    # Vector Database Settings
-    embedding_model: str = "sentence-transformers/altaidevorg/bge-m3-distill-8l"
-    vector_db_path: str = "data/vector_db"
-    collection_name: str = "youtube_transcripts"
-    
-    # RAG Settings
-    retrieval_k: int = 3
-    similarity_threshold: float = 0.7
+    whisper_model: str = ""
+    language: str = ""
+    embedding_model: str = ""
+    vector_db_path: str = ""
+    collection_name: str = ""
+    retrieval_k: int = 0
+    similarity_threshold: float = 0.0
+    transcripts_json: str = ""
     
     # File Paths
     data_dir: Path = Path("data")
     audio_dir: Path = Path("data/audio")
     transcripts_dir: Path = Path("data/transcripts")
-    transcripts_json: str = "data/transcripts.json"
     
     def __post_init__(self):
         """Create directories if they don't exist."""
@@ -100,18 +95,18 @@ class AppConfig:
         self.audio_dir.mkdir(exist_ok=True)
         self.transcripts_dir.mkdir(exist_ok=True)
     
-    @classmethod
-    def from_env(cls) -> 'AppConfig':
-        """Create configuration from environment variables."""
-        import os
-        return cls(
-            gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
-            playlist_url=os.getenv("YOUTUBE_PLAYLIST_URL", ""),
-            whisper_model=os.getenv("WHISPER_MODEL", "medium"),
-            language=os.getenv("LANGUAGE_CODE", "tr"),
-            vector_db_path=os.getenv("VECTOR_DB_PATH", "data/vector_db"),
-            collection_name=os.getenv("COLLECTION_NAME", "youtube_transcripts")
-        )
+    def validate(self) -> bool:
+        """Validate required configuration."""
+        if not self.gemini_api_key:
+            print("ERROR: GEMINI_API_KEY environment variable is required!")
+            print("Please set: export GEMINI_API_KEY=your_api_key_here")
+            return False
+        
+        if not self.model_name:
+            print("ERROR: model_name not found in settings.yaml")
+            return False
+            
+        return True
 
 @dataclass
 class SystemStatus:
