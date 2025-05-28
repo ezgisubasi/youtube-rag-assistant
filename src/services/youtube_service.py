@@ -87,7 +87,7 @@ class YouTubeService:
         try:
             yt = YouTube(video_url)
             video_id = yt.video_id
-            file_name = f"{video_id}.mp4"  # Keep mp4 extension like previous project
+            file_name = f"{video_id}.m4a"  # Keep m4a extension like previous project
             file_path = self.audio_dir / file_name
             
             # Check if audio file already exists
@@ -104,7 +104,7 @@ class YouTubeService:
             if not audio_stream:
                 return DownloadResult(success=False, error_message=f"No audio stream found")
             
-            # Download audio as mp4 file (audio only)
+            # Download audio as m4a file (audio only)
             audio_stream.download(
                 output_path=str(self.audio_dir), 
                 filename=file_name
