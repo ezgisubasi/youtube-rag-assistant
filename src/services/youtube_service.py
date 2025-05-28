@@ -1,6 +1,8 @@
 # src/services/youtube_service.py
+"""YouTube video downloading service."""
 
 import json
+import ssl
 from pathlib import Path
 from typing import List, Optional
 from dataclasses import dataclass
@@ -21,12 +23,12 @@ class DownloadResult:
     error_message: str = ""
 
 class YouTubeService:
-    """YouTube video downloading service."""
+    """Professional YouTube video downloading service."""
     
     def __init__(self):
         """Initialize YouTube service."""
         self.config = get_config()
-        self.audio_dir = self.config.audio_dir
+        self.audio_dir = Path(self.config.audio_dir)  # Convert to Path object
         self.transcripts_json = self.config.transcripts_json
         
         # Ensure directories exist
@@ -180,8 +182,8 @@ def main():
     success = service.download_playlist()
     
     if success:
-        status = service.get_status()
-        print(f"Success! {status}")
+        videos = service.get_downloaded_videos()
+        print(f"Success! Downloaded {len(videos)} audio files")
     else:
         print("Failed!")
 
