@@ -11,6 +11,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Qdrant
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
+from qdrant_client import QdrantClient
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -30,13 +31,12 @@ class VectorConfig:
     chunk_overlap: int = 200
 
 class VectorService:
-    """Simple vector service for YouTube RAG."""
+    """Professional vector service for YouTube RAG."""
     
     def __init__(self):
         """Initialize vector service."""
         config = get_config()
         
-        # Create vector config from app config
         self.config = VectorConfig(
             embedding_model=config.embedding_model,
             vector_db_path=config.vector_db_path,
@@ -57,27 +57,35 @@ class VectorService:
         )
         
         self.vector_store = None
-        print("Vector service initialized!")
+        print("Vector service initialized")
     
     def initialize_vector_store(self) -> bool:
-        """Initialize vector store - load existing or create new one."""
+        """Initialize vector store - load existing or create new."""
         try:
             vector_db_path = Path(self.config.vector_db_path)
             
-            # If vector database exists, load it
+            # Try to load existing vector store
             if vector_db_path.exists() and any(vector_db_path.iterdir()):
                 print(f"Loading existing vector database from: {vector_db_path}")
                 
-                self.vector_store = Qdrant(
-                    client=None,
-                    path=self.config.vector_db_path,
-                    embeddings=self.embeddings,
-                    collection_name=self.config.collection_name
-                )
-                print("Vector store loaded successfully")
-                return True
+                try:
+                    client = QdrantClient(path=str(vector_db_path))
+                    self.vector_store = Qdrant(
+                        client=client,
+                        collection_name=self.config.collection_name,
+                        embeddings=self.embeddings
+                    )
+                    
+                    # Test if it works
+                    self.vector_store.similarity_search("test", k=1)
+                    print("Vector store loaded successfully")
+                    return True
+                    
+                except Exception as e:
+                    print(f"Failed to load existing vector store: {e}")
+                    print("Creating new vector store...")
             
-            # If not exists, create new one
+            # Create new vector store
             print("Creating new vector database...")
             
             # Load transcripts
@@ -103,7 +111,7 @@ class VectorService:
                     documents.append(doc)
             
             if not documents:
-                print("No documents with transcripts found!")
+                print("No documents with transcripts found")
                 return False
             
             print(f"Processing {len(documents)} documents...")
@@ -121,7 +129,7 @@ class VectorService:
                 force_recreate=True
             )
             
-            print("Vector store created successfully!")
+            print("Vector store created successfully")
             return True
             
         except Exception as e:
@@ -131,7 +139,7 @@ class VectorService:
     def search(self, query: str, top_k: int = None) -> List[SearchResult]:
         """Search for relevant content."""
         if not self.vector_store:
-            print("Vector store not initialized!")
+            print("Vector store not initialized")
             return []
         
         try:
@@ -160,20 +168,9 @@ class VectorService:
             return []
 
 def main():
-    """Test the vector service."""
+    """Test vector service."""
     service = VectorService()
-    
-    # Create vector store
-    success = service.initialize_vector_store()
-    if not success:
-        return
-    
-    # Test search
-    results = service.search("sürdürülebilirlik")
-    print(f"Found {len(results)} results")
-    
-    for i, result in enumerate(results, 1):
-        print(f"{i}. {result.video_title} (Score: {result.similarity_score:.3f})")
+    service.initialize_vector_store()
 
 if __name__ == "__main__":
     main()
