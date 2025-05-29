@@ -69,28 +69,49 @@ class AppConfig:
     # API Settings (from environment only)
     gemini_api_key: str = ""
     
-    # All other settings (from YAML files)
+    # Model Configuration (from YAML)
     model_name: str = ""
+    embedding_model: str = ""
+    
+    # YouTube Settings (from YAML)
     playlist_url: str = ""
+    
+    # Transcription Settings (from YAML)
     whisper_model: str = ""
     language: str = ""
-    embedding_model: str = ""
+    
+    # Vector Database Settings (from YAML)
     vector_db_path: str = ""
     collection_name: str = ""
+    
+    # RAG Settings (from YAML)
     retrieval_k: int = 0
     similarity_threshold: float = 0.0
-    transcripts_json: str = ""
     
-    # File Paths
-    data_dir: Path = Path("data")
-    audio_dir: Path = Path("data/audio")
-    transcripts_dir: Path = Path("data/transcripts")
+    # File Paths (from YAML)
+    data_dir: str = ""
+    audio_dir: str = ""
+    transcripts_dir: str = ""
+    transcripts_json: str = ""
     
     def __post_init__(self):
         """Create directories if they don't exist."""
-        self.data_dir.mkdir(exist_ok=True)
-        self.audio_dir.mkdir(exist_ok=True)
-        self.transcripts_dir.mkdir(exist_ok=True)
+        # Convert string paths to Path objects and create directories
+        if self.data_dir:
+            data_path = Path(self.data_dir)
+            data_path.mkdir(exist_ok=True)
+        
+        if self.audio_dir:
+            audio_path = Path(self.audio_dir)
+            audio_path.mkdir(exist_ok=True)
+        
+        if self.transcripts_dir:
+            transcripts_path = Path(self.transcripts_dir)
+            transcripts_path.mkdir(exist_ok=True)
+        
+        if self.vector_db_path:
+            vector_db_path = Path(self.vector_db_path)
+            vector_db_path.mkdir(exist_ok=True)
     
     def validate(self) -> bool:
         """Validate required configuration."""
@@ -101,6 +122,14 @@ class AppConfig:
         
         if not self.model_name:
             print("ERROR: model_name not found in settings.yaml")
+            return False
+        
+        if not self.vector_db_path:
+            print("ERROR: vector_db_path not found in settings.yaml")
+            return False
+        
+        if not self.collection_name:
+            print("ERROR: collection_name not found in settings.yaml")
             return False
             
         return True

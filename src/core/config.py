@@ -37,10 +37,29 @@ class ConfigManager:
         if settings_file.exists():
             yaml_settings = self._load_yaml_file(settings_file)
             
-            # Update config with YAML values
-            for key, value in yaml_settings.items():
-                if hasattr(config, key):
-                    setattr(config, key, value)
+            # Update config with YAML values - map all fields from your settings.yaml
+            field_mappings = {
+                'model_name': 'model_name',
+                'playlist_url': 'playlist_url',
+                'whisper_model': 'whisper_model',
+                'language': 'language',
+                'embedding_model': 'embedding_model',
+                'vector_db_path': 'vector_db_path',
+                'collection_name': 'collection_name',
+                'retrieval_k': 'retrieval_k',
+                'similarity_threshold': 'similarity_threshold',
+                'data_dir': 'data_dir',
+                'audio_dir': 'audio_dir',
+                'transcripts_dir': 'transcripts_dir',
+                'transcripts_json': 'transcripts_json'
+            }
+            
+            for yaml_key, config_attr in field_mappings.items():
+                if yaml_key in yaml_settings:
+                    setattr(config, config_attr, yaml_settings[yaml_key])
+                    print(f"Loaded {config_attr}: {yaml_settings[yaml_key]}")
+        else:
+            print(f"Warning: Settings file not found: {settings_file}")
         
         # Override with environment variables (highest priority)
         config.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
@@ -56,7 +75,9 @@ class ConfigManager:
             prompts_file = self.config_dir / "prompts.yaml"
             if prompts_file.exists():
                 self._prompts = self._load_yaml_file(prompts_file)
+                print(f"Loaded prompts: {list(self._prompts.keys())}")
             else:
+                print(f"Warning: Prompts file not found: {prompts_file}")
                 self._prompts = {}
         return self._prompts
     
@@ -64,7 +85,8 @@ class ConfigManager:
         """Load YAML file safely."""
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                return yaml.safe_load(f) or {}
+                content = yaml.safe_load(f)
+                return content or {}
         except Exception as e:
             print(f"Warning: Could not load {file_path}: {e}")
             return {}
