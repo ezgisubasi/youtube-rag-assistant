@@ -9,6 +9,7 @@ from pathlib import Path
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
