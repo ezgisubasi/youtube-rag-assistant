@@ -64,16 +64,16 @@ class VectorService:
         try:
             vector_db_path = Path(self.config.vector_db_path)
             
-            # Try to load existing vector store
+            # If vector database exists, load it
             if vector_db_path.exists() and any(vector_db_path.iterdir()):
                 print(f"Loading existing vector database from: {vector_db_path}")
                 
                 try:
-                    client = QdrantClient(path=str(vector_db_path))
-                    self.vector_store = Qdrant(
-                        client=client,
-                        collection_name=self.config.collection_name,
-                        embeddings=self.embeddings
+                    # Use Qdrant with path parameter (like your previous project)
+                    self.vector_store = Qdrant.from_existing_collection(
+                        embedding=self.embeddings,
+                        path=self.config.vector_db_path,
+                        collection_name=self.config.collection_name
                     )
                     
                     # Test if it works
@@ -85,7 +85,7 @@ class VectorService:
                     print(f"Failed to load existing vector store: {e}")
                     print("Creating new vector store...")
             
-            # Create new vector store
+            # If not exists, create new one
             print("Creating new vector database...")
             
             # Load transcripts
