@@ -13,6 +13,7 @@ openai-whisper>=20231117
 langchain>=0.1.0
 langchain-google-genai>=2.0.0
 langchain-community>=0.0.10
+langchain-qdrant>=0.1.0
 
 # Vector database and embeddings
 qdrant-client>=1.7.0
@@ -35,12 +36,3 @@ uvicorn>=0.24.0
 click>=8.1.0
 rich>=13.0.0
 tqdm>=4.66.0
-
-# Development and testing
-pytest>=7.0.0
-pytest-asyncio>=0.23.0
-black>=23.0.0
-flake8>=6.0.0
-
-# Data processing
-pandas>=2.0.0
