@@ -1,2 +1,2 @@
 # youtube-rag-assistant
-Professional YouTube RAG Assistant using LangChain and Gemini AI
+YouTube RAG Assistant using LangChain and Gemini AI
