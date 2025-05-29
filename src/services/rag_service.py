@@ -1,14 +1,13 @@
-# src/services/rag_service.py
-"""RAG service combining vector search with Gemini AI for conversational interface."""
+"""RAG service with dataclass structure and formatted output."""
 
 from typing import List, Optional
 from dataclasses import dataclass
 import sys
 from pathlib import Path
+import os
 
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
-
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -24,28 +23,42 @@ class RAGConfig:
     api_key: str
     temperature: float = 0.7
     max_tokens: int = 1024
-    context_window: int = 3
-    min_similarity_score: float = 0.5
+    min_similarity_threshold: float = 0.25
+    search_top_k: int = 5
+
+@dataclass
+class FormattedResponse:
+    """Formatted response structure."""
+    answer: str
+    video_title: str
+    video_url: str
+    confidence_score: float
+    
+    def format_output(self) -> str:
+        """Format the complete response with source."""
+        formatted_response = f"{self.answer}\\n\\n"
+        formatted_response += f"**Source:** \\"{self.video_title}\\" {self.video_url} "
+        formatted_response += f"Confidence Score: {self.confidence_score:.2f}"
+        return formatted_response
 
 class RAGService:
-    """RAG service for conversational interface with YouTube content."""
+    """Clean RAG service with structured output."""
     
     def __init__(self):
         """Initialize RAG service."""
-        # Get configuration
+        print("Initializing RAG Service...")
+        
+        # Load configuration
         config = get_config()
-        prompts = get_prompts()
+        gemini_api_key = config.gemini_api_key or os.getenv("GEMINI_API_KEY")
         
-        # Validate API key
-        if not config.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables!")
+        if not gemini_api_key:
+            raise ValueError("GEMINI_API_KEY not found in environment variables")
         
-        # Create RAG config
+        # Create RAG configuration
         self.config = RAGConfig(
-            model_name=config.model_name,
-            api_key=config.gemini_api_key,
-            context_window=getattr(config, 'retrieval_k', 3),
-            min_similarity_score=getattr(config, 'similarity_threshold', 0.5)
+            model_name=config.model_name or "gemini-1.5-flash",
+            api_key=gemini_api_key
         )
         
         # Initialize Gemini AI
@@ -61,145 +74,143 @@ class RAGService:
         self.vector_service = VectorService()
         self.vector_service.initialize_vector_store()
         
-        # Get prompts from prompts.yaml file only
-        prompts = get_prompts()
+        # Clean prompt template for answer generation
+        self.answer_prompt = """TALİMAT: Aşağıdaki video içeriğine dayanarak kullanıcının sorusunu açık, yapılandırılmış ve Türkçe olarak yanıtla.
+
+VIDEO İÇERİĞİ:
+{video_content}
+
+KULLANICI SORUSU:
+{question}
+
+GÖREVLER:
+
+Yalnızca verilen video içeriğini kullanarak yanıt oluştur.
+Yanıtı, video içeriğinden alınan bilgileri genel geçer bilgi gibi sunarak oluştur. "Videoya göre" veya "videodaki kişiye göre" gibi ifadelerden kaçın.
+Net, akıcı ve yapılandırılmış bir metin yaz.
+Gerekirse örnekler ve açıklayıcı detaylar ekle.
+Türkçe yaz.
+Video başlığı, bağlantısı ve güven skorunu yanıta dahil etme; bu bilgiler dışarıdan eklenecek.
+
+YANITINIZ:"""
         
-        # Debug: show what prompts are available
-        print(f"Available prompts in config: {list(prompts.keys())}")
-        
-        # Load prompts from YAML - fail if not found
-        if not prompts:
-            raise ValueError("No prompts found in config/prompts.yaml file!")
-        
-        # Load required prompts
-        self.system_prompt = prompts.get('system_prompt')
-        self.rag_prompt = prompts.get('rag_prompt') 
-        self.no_context_prompt = prompts.get('no_context_prompt')
-        
-        # Validate required prompts exist
-        if not self.rag_prompt:
-            raise ValueError("rag_prompt not found in config/prompts.yaml!")
-        
-        if not self.no_context_prompt:
-            raise ValueError("no_context_prompt not found in config/prompts.yaml!")
-        
-        print("RAG service initialized with Gemini AI!")
-        print(f"Using prompts from config/prompts.yaml: {len(prompts)} prompts loaded")
+        print("RAG Service initialized successfully")
     
-    def build_context(self, search_results: List[SearchResult]) -> str:
-        """Build context string from search results."""
-        if not search_results:
-            return ""
-        
-        context_parts = []
-        for i, result in enumerate(search_results, 1):
-            context_part = f"""
-KAYNAK {i}:
-Video: {result.video_title}
-URL: {result.video_url}
-İçerik: {result.text_content}
-Benzerlik Skoru: {result.similarity_score:.3f}
-"""
-            context_parts.append(context_part)
-        
-        return "\n".join(context_parts)
-    
-    def generate_response(self, query: str) -> RAGResponse:
-        """Generate RAG response for user query."""
+    def get_best_video(self, query: str) -> Optional[SearchResult]:
+        """Get the most relevant video based on highest confidence score."""
         try:
-            # Step 1: Search for relevant content
-            print(f"Searching for: '{query}'")
             search_results = self.vector_service.search(
                 query=query, 
-                top_k=self.config.context_window
+                top_k=self.config.search_top_k
             )
             
-            # Filter by similarity threshold
+            if not search_results:
+                return None
+            
+            # Filter results above minimum threshold
             filtered_results = [
                 result for result in search_results 
-                if result.similarity_score >= self.config.min_similarity_score
+                if result.similarity_score >= self.config.min_similarity_threshold
             ]
             
-            print(f"Found {len(search_results)} results, {len(filtered_results)} above threshold")
+            # Return best result or first available if none meet threshold
+            best_video = filtered_results[0] if filtered_results else search_results[0]
             
-            # Step 2: Handle no relevant content
-            if not filtered_results:
-                no_context_response = self.no_context_prompt.format(question=query)
-                
+            print(f"Selected video: {best_video.video_title}")
+            print(f"Confidence score: {best_video.similarity_score:.3f}")
+            
+            return best_video
+            
+        except Exception as e:
+            print(f"Error finding best video: {e}")
+            return None
+    
+    def generate_structured_answer(self, question: str, video: SearchResult) -> str:
+        """Generate structured answer based on video content."""
+        try:
+            prompt = self.answer_prompt.format(
+                video_content=video.text_content,
+                question=question
+            )
+            
+            response = self.llm.invoke(prompt)
+            return response.content.strip()
+            
+        except Exception as e:
+            print(f"Error generating answer: {e}")
+            return "Yanıt oluşturulurken bir hata oluştu."
+    
+    def generate_response(self, query: str) -> RAGResponse:
+        """Generate complete response with formatted output."""
+        try:
+            print(f"Processing query: {query}")
+            
+            # Get best matching video
+            best_video = self.get_best_video(query)
+            
+            if not best_video:
                 return RAGResponse(
                     query=query,
-                    answer=no_context_response,
+                    answer="Bu soruya yanıt verebilmek için uygun video içeriği bulunamadı. Lütfen farklı kelimeler deneyin.",
                     sources=[],
                     confidence_score=0.0
                 )
             
-            # Step 3: Build context
-            context = self.build_context(filtered_results)
+            # Generate structured answer
+            answer = self.generate_structured_answer(query, best_video)
             
-            # Step 4: Create prompt using loaded template
-            prompt = self.rag_prompt.format(
-                context=context,
-                question=query
+            # Create formatted response
+            formatted_response = FormattedResponse(
+                answer=answer,
+                video_title=best_video.video_title,
+                video_url=best_video.video_url,
+                confidence_score=best_video.similarity_score
             )
             
-            # Step 5: Generate response with Gemini
-            print("Generating response with Gemini AI...")
-            response = self.llm.invoke(prompt)
-            answer = response.content
-            
-            # Step 6: Calculate confidence score (simple average)
-            confidence_score = sum(r.similarity_score for r in filtered_results) / len(filtered_results)
-            
-            print("Response generated successfully")
-            
+            # Return RAG response with formatted output
             return RAGResponse(
                 query=query,
-                answer=answer,
-                sources=filtered_results,
-                confidence_score=confidence_score
+                answer=formatted_response.format_output(),
+                sources=[best_video],
+                confidence_score=best_video.similarity_score
             )
             
         except Exception as e:
             print(f"Error generating response: {e}")
-            error_response = f"Üzgünüm, yanıt oluştururken bir hata oluştu: {str(e)}"
-            
             return RAGResponse(
                 query=query,
-                answer=error_response,
+                answer=f"Yanıt oluşturulurken hata oluştu: {str(e)}",
                 sources=[],
                 confidence_score=0.0
             )
-    
+
 def main():
-    """Simple test of RAG service."""
-    print("=== YouTube RAG Service Test ===")
+    """Test function for RAG service."""
+    print("Testing Clean RAG Service")
+    print("=" * 40)
     
     try:
-        # Initialize service
-        print("Initializing RAG Service...")
-        rag_service = RAGService()
+        service = RAGService()
         
-        # Test single query
-        test_query = "Liderlik becerileri nasıl geliştirilir?"
-        print(f"\nTesting query: '{test_query}'")
+        test_queries = [
+            "Nasıl iyi lider olunur?",
+            "Liderlik nasıl geliştirilir?",
+            "Başarı faktörleri nelerdir?"
+        ]
         
-        response = rag_service.generate_response(test_query)
-        
-        print(f"\nAnswer: {response.answer}")
-        print(f"Confidence: {response.confidence_score:.3f}")
-        print(f"Sources: {len(response.sources)} videos")
-        
-        if response.sources:
-            print("\nSource videos:")
-            for source in response.sources:
-                print(f"  - {source.video_title} (Score: {source.similarity_score:.3f})")
-        
-        print("\nRAG service test completed!")
-        
+        for query in test_queries:
+            print(f"\\nTesting query: {query}")
+            print("-" * 30)
+            
+            response = service.generate_response(query)
+            
+            print(f"Confidence: {response.confidence_score:.3f}")
+            print(f"Sources: {len(response.sources)}")
+            print(f"Answer:\\n{response.answer}")
+            print("-" * 30)
+            
     except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Test failed: {e}")
 
 if __name__ == "__main__":
     main()
