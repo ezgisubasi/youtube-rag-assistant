@@ -1,5 +1,6 @@
 # src/services/vector_service.py
-"""Simple vector service using LangChain and Qdrant."""
+# src/services/vector_service.py
+"""Vector service using LangChain and Qdrant."""
 
 import json
 from typing import List
@@ -59,9 +60,27 @@ class VectorService:
         self.vector_store = None
         print("Vector service initialized!")
     
-    def create_vector_store(self) -> bool:
-        """Create vector store from transcripts."""
+    def initialize_vector_store(self) -> bool:
+        """Initialize vector store - load existing or create new one."""
         try:
+            vector_db_path = Path(self.config.vector_db_path)
+            
+            # If vector database exists, load it
+            if vector_db_path.exists() and any(vector_db_path.iterdir()):
+                print(f"Loading existing vector database from: {vector_db_path}")
+                
+                self.vector_store = Qdrant(
+                    client=None,
+                    path=self.config.vector_db_path,
+                    embeddings=self.embeddings,
+                    collection_name=self.config.collection_name
+                )
+                print("Vector store loaded successfully")
+                return True
+            
+            # If not exists, create new one
+            print("Creating new vector database...")
+            
             # Load transcripts
             if not Path(self.config.transcripts_json).exists():
                 print(f"Transcripts file not found: {self.config.transcripts_json}")
@@ -107,7 +126,7 @@ class VectorService:
             return True
             
         except Exception as e:
-            print(f"Error creating vector store: {e}")
+            print(f"Error initializing vector store: {e}")
             return False
     
     def search(self, query: str, top_k: int = None) -> List[SearchResult]:
@@ -146,7 +165,7 @@ def main():
     service = VectorService()
     
     # Create vector store
-    success = service.create_vector_store()
+    success = service.initialize_vector_store()
     if not success:
         return
     
