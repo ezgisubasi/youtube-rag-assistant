@@ -3,7 +3,6 @@
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 import os
@@ -55,8 +54,6 @@ class RAGResponse:
     answer: str
     sources: List[SearchResult]
     confidence_score: Optional[float] = None
-    processing_time: Optional[float] = None
-    timestamp: datetime = field(default_factory=datetime.now)
     
     def get_source_titles(self) -> List[str]:
         """Get video titles used as sources."""

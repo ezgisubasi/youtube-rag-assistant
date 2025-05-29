@@ -19,11 +19,11 @@ qdrant-client>=1.7.0
 sentence-transformers>=3.0.0
 
 # Machine Learning dependencies
-torch>=2.0.0
+torch>=2.4.0
 numpy>=2.0.0
 transformers>=4.40.0
 
-# Google AI 
+# Google AI (Gemini)
 google-generativeai>=0.8.0
 
 # Web framework
