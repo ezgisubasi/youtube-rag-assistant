@@ -1,5 +1,5 @@
 # src/services/vector_service.py
-"""Vector service using LangChain and Qdrant."""
+"""Professional vector service using LangChain and Qdrant."""
 
 import json
 from typing import List
@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import sys
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Qdrant
+from langchain_qdrant import Qdrant
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
 from qdrant_client import QdrantClient
@@ -57,40 +57,43 @@ class VectorService:
         )
         
         self.vector_store = None
-        print("Vector service initialized")
     
     def initialize_vector_store(self) -> bool:
         """Initialize vector store - load existing or create new."""
         try:
+            # Setup Qdrant client
             vector_db_path = Path(self.config.vector_db_path)
+            vector_db_path.mkdir(parents=True, exist_ok=True)
             
-            # If vector database exists, load it
-            if vector_db_path.exists() and any(vector_db_path.iterdir()):
-                print(f"Loading existing vector database from: {vector_db_path}")
-                
+            qdrant_client = QdrantClient(path=str(vector_db_path))
+            
+            # Check if collection exists
+            try:
+                collections = qdrant_client.get_collections()
+                collection_names = [col.name for col in collections.collections]
+                collection_exists = self.config.collection_name in collection_names
+            except Exception:
+                collection_exists = False
+            
+            # Load existing collection if it exists
+            if collection_exists:
                 try:
-                    # Use Qdrant with path parameter (like your previous project)
-                    self.vector_store = Qdrant.from_existing_collection(
-                        embedding=self.embeddings,
-                        path=self.config.vector_db_path,
-                        collection_name=self.config.collection_name
+                    self.vector_store = Qdrant(
+                        client=qdrant_client,
+                        collection_name=self.config.collection_name,
+                        embeddings=self.embeddings
                     )
                     
-                    # Test if it works
+                    # Test the vector store
                     self.vector_store.similarity_search("test", k=1)
-                    print("Vector store loaded successfully")
                     return True
                     
-                except Exception as e:
-                    print(f"Failed to load existing vector store: {e}")
-                    print("Creating new vector store...")
+                except Exception:
+                    # Fall through to create new vector store
+                    pass
             
-            # If not exists, create new one
-            print("Creating new vector database...")
-            
-            # Load transcripts
+            # Create new vector store if needed
             if not Path(self.config.transcripts_json).exists():
-                print(f"Transcripts file not found: {self.config.transcripts_json}")
                 return False
             
             with open(self.config.transcripts_json, 'r', encoding='utf-8') as f:
@@ -111,66 +114,55 @@ class VectorService:
                     documents.append(doc)
             
             if not documents:
-                print("No documents with transcripts found")
                 return False
-            
-            print(f"Processing {len(documents)} documents...")
             
             # Split into chunks
             chunks = self.text_splitter.split_documents(documents)
-            print(f"Created {len(chunks)} chunks")
             
             # Create vector store
             self.vector_store = Qdrant.from_documents(
                 documents=chunks,
                 embedding=self.embeddings,
-                path=self.config.vector_db_path,
-                collection_name=self.config.collection_name,
-                force_recreate=True
+                client=qdrant_client,
+                collection_name=self.config.collection_name
             )
             
-            print("Vector store created successfully")
             return True
             
-        except Exception as e:
-            print(f"Error initializing vector store: {e}")
+        except Exception:
             return False
     
     def search(self, query: str, top_k: int = None) -> List[SearchResult]:
         """Search for relevant content."""
         if not self.vector_store:
-            print("Vector store not initialized")
             return []
         
         try:
             k = top_k or self.config.retrieval_k
             
+            # Get results with scores
             docs_with_scores = self.vector_store.similarity_search_with_score(
-                query=query,
-                k=k
+                query=query, k=k
             )
             
+            # Convert to SearchResult objects
             results = []
             for doc, score in docs_with_scores:
+                # Convert distance to similarity (higher = more similar)
+                similarity_score = 1.0 / (1.0 + abs(score))
+                
                 result = SearchResult(
                     video_id=doc.metadata['video_id'],
                     video_title=doc.metadata['video_title'],
                     video_url=doc.metadata['video_url'],
                     text_content=doc.page_content,
-                    similarity_score=float(score)
+                    similarity_score=similarity_score
                 )
                 results.append(result)
             
+            # Sort by similarity (highest first)
+            results.sort(key=lambda x: x.similarity_score, reverse=True)
             return results
             
-        except Exception as e:
-            print(f"Search error: {e}")
+        except Exception:
             return []
-
-def main():
-    """Test vector service."""
-    service = VectorService()
-    service.initialize_vector_store()
-
-if __name__ == "__main__":
-    main()
