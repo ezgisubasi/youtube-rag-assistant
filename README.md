@@ -1,4 +1,3 @@
-# youtube-rag-assistant
 # YouTube RAG Assistant
 
 A specialized AI chatbot that provides leadership guidance using YouTube video content as a knowledge base. Built with LangChain, Qdrant, and Gemini AI.
