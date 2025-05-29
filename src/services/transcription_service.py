@@ -190,7 +190,6 @@ class TranscriptionService:
         return True
     
 
-
 def main():
     """Test the transcription service."""
     print("Transcription Service Test")

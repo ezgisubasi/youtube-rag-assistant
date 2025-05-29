@@ -1,5 +1,5 @@
 # src/services/vector_service.py
-"""Professional vector service using LangChain and Qdrant."""
+"""Vector service using LangChain and Qdrant."""
 
 import json
 from typing import List
@@ -57,49 +57,41 @@ class VectorService:
         )
         
         self.vector_store = None
+        self.qdrant_client = None
     
     def initialize_vector_store(self) -> bool:
-        """Initialize vector store - load existing or create new."""
+        """Initialize vector store - use existing or create new."""
         try:
-            # Setup Qdrant client
+            # Setup paths
             vector_db_path = Path(self.config.vector_db_path)
             vector_db_path.mkdir(parents=True, exist_ok=True)
             
-            qdrant_client = QdrantClient(path=str(vector_db_path))
+            # Create client only once
+            if self.qdrant_client is None:
+                self.qdrant_client = QdrantClient(path=str(vector_db_path))
             
-            # Check if collection exists
+            # Check if vector DB exists
             try:
-                collections = qdrant_client.get_collections()
+                collections = self.qdrant_client.get_collections()
                 collection_names = [col.name for col in collections.collections]
-                collection_exists = self.config.collection_name in collection_names
-            except Exception:
-                collection_exists = False
-            
-            # Load existing collection if it exists
-            if collection_exists:
-                try:
+                
+                if self.config.collection_name in collection_names:
+                    # Use existing vector DB
                     self.vector_store = Qdrant(
-                        client=qdrant_client,
+                        client=self.qdrant_client,
                         collection_name=self.config.collection_name,
                         embeddings=self.embeddings
                     )
-                    
-                    # Test the vector store
                     self.vector_store.similarity_search("test", k=1)
                     return True
                     
-                except Exception:
-                    # Fall through to create new vector store
-                    pass
+            except Exception:
+                pass
             
-            # Create new vector store if needed
-            if not Path(self.config.transcripts_json).exists():
-                return False
-            
+            # Create new vector DB
             with open(self.config.transcripts_json, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            # Create documents
             documents = []
             for item in data:
                 if item.get('video_text', '').strip():
@@ -116,14 +108,12 @@ class VectorService:
             if not documents:
                 return False
             
-            # Split into chunks
             chunks = self.text_splitter.split_documents(documents)
             
-            # Create vector store
             self.vector_store = Qdrant.from_documents(
                 documents=chunks,
                 embedding=self.embeddings,
-                client=qdrant_client,
+                client=self.qdrant_client,
                 collection_name=self.config.collection_name
             )
             
@@ -140,15 +130,12 @@ class VectorService:
         try:
             k = top_k or self.config.retrieval_k
             
-            # Get results with scores
             docs_with_scores = self.vector_store.similarity_search_with_score(
                 query=query, k=k
             )
             
-            # Convert to SearchResult objects
             results = []
             for doc, score in docs_with_scores:
-                # Convert distance to similarity (higher = more similar)
                 similarity_score = 1.0 / (1.0 + abs(score))
                 
                 result = SearchResult(
@@ -160,7 +147,6 @@ class VectorService:
                 )
                 results.append(result)
             
-            # Sort by similarity (highest first)
             results.sort(key=lambda x: x.similarity_score, reverse=True)
             return results
             
