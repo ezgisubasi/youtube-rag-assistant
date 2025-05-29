@@ -1,5 +1,4 @@
 # src/services/vector_service.py
-# src/services/vector_service.py
 """Vector service using LangChain and Qdrant."""
 
 import json
