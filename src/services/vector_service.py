@@ -151,7 +151,7 @@ def main():
         return
     
     # Test search
-    results = service.search("leadership skills")
+    results = service.search("sürdürülebilirlik")
     print(f"Found {len(results)} results")
     
     for i, result in enumerate(results, 1):
