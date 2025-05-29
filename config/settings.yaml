@@ -11,8 +11,10 @@ playlist_url: https://www.youtube.com/playlist?list=PLCi3Q_-uGtdlCsFXHLDDHBSLyq4
 whisper_model: medium
 language: tr
 
+# Embedding Settings
+embedding_model: altaidevorg/bge-m3-distill-8l
+
 # Vector Database Settings
-embedding_model: sentence-transformers/altaidevorg/bge-m3-distill-8l
 vector_db_path: data/vector_db
 collection_name: youtube_transcripts
 
