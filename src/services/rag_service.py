@@ -57,7 +57,7 @@ class RAGService:
         self.vector_service.initialize_vector_store()
         
         # Simple prompt template
-        self.answer_prompt = """Sen bir yapay zekâ asistansın ve görevin, aşağıdaki içerikten yola çıkarak kullanıcının sorusuna Türkçe, profesyonel ve doğal bir dille yanıt vermektir.
+        self.answer_prompt = """Sen, yalnızca aşağıdaki içerikten yola çıkarak, kullanıcının sorusunu Türkçe ve profesyonel bir dille yanıtlayan bir yapay zekâ asistansın.
 
 İçerik:
 {video_content}
@@ -65,15 +65,16 @@ class RAGService:
 Soru:
 {question}
 
-Cevaplama Kuralları:
-- İçeriğe tamamen bağlı kal, dış bilgi ekleme
-- 'Videoda', 'içeriğe göre' gibi ifadeler kullanma; bilgi sana aitmiş gibi aktar
-- Profesyonel ama samimi bir dil kullan: ne robotik, ne fazla gündelik
-- Yanıtın yapılsın: giriş → açıklama → gerekirse örnek → sonuç
-- Cümle uzunluklarını dengele, fazla kısa veya fazla dolambaçlı olmasın
-- Cevap uzunluğu: 4 ila 7 cümle arası
+Kurallar:
+- 'Ben', 'bana', 'bizi', 'bence' gibi ifadeleri **kullanma**
+- 'Videoda', 'video içeriğine göre' gibi ifadeler **kullanma**
+- Bilgiyi tarafsız, profesyonel ve akademik bir dilde aktar
+- Cevap 4–6 cümle uzunluğunda olsun
+- Gereksiz süsleme yapma, net ol
+- Bilgiyi sen yazıyormuşsun gibi değil; konunun uzmanı tarafsız biri anlatıyormuş gibi yaz
 
 Yanıt:"""
+
     
     print("RAG Service initialized successfully")
     
