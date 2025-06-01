@@ -1,6 +1,6 @@
 """
 YouTube RAG Assistant - Streamlit Web Interface
-A specialized AI chatbot that provides leadership guidance using YouTube video content.
+A specialized AI chatbot that provides leadership guidance from YouTube video content.
 """
 
 import streamlit as st
@@ -11,16 +11,13 @@ from typing import List, Optional
 import time
 from datetime import datetime
 
-# Add src to Python path
-current_dir = Path(__file__).parent
-src_path = current_dir / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
+# Add src to path for imports
+sys.path.append(str(Path(__file__).parent / "src"))
 
 try:
-    from services.rag_service import RAGService
-    from core.models import RAGResponse
-    from core.config import get_config, validate_config
+    from src.services.rag_service import RAGService
+    from src.core.models import RAGResponse
+    from src.core.config import get_config, validate_config
 except ImportError as e:
     st.error(f"Import error: {e}")
     st.stop()
@@ -48,37 +45,6 @@ st.markdown("""
         color: #666;
         text-align: center;
         margin-bottom: 2rem;
-    }
-    .chat-message {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 0.5rem 0;
-        border-left: 4px solid #1f77b4;
-        background-color: #f8f9fa;
-    }
-    .assistant-message {
-        border-left-color: #28a745;
-        background-color: #f8fff9;
-    }
-    .source-info {
-        background-color: #e9ecef;
-        padding: 0.5rem;
-        border-radius: 0.3rem;
-        margin-top: 0.5rem;
-        font-size: 0.9rem;
-    }
-    .confidence-score {
-        display: inline-block;
-        padding: 0.2rem 0.5rem;
-        border-radius: 0.3rem;
-        font-weight: bold;
-        color: white;
-    }
-    .confidence-high { background-color: #28a745; }
-    .confidence-medium { background-color: #ffc107; color: #000; }
-    .confidence-low { background-color: #dc3545; }
-    .stChatMessage {
-        background-color: transparent !important;
     }
     .source-info {
         background-color: #f8f9fa !important;
@@ -113,18 +79,8 @@ def load_rag_service():
     except Exception as e:
         return None, str(e)
 
-def parse_response_content(response_answer):
-    """Parse response content and return main answer and source info separately."""
-    if "**Source:**" in response_answer:
-        parts = response_answer.split("**Source:**")
-        main_answer = parts[0].strip()
-        source_info = parts[1].strip() if len(parts) > 1 else ""
-        return main_answer, source_info
-    else:
-        return response_answer, ""
-
 def display_message(message: dict):
-    """Display a chat message."""
+    """Display a chat message - simple version."""
     role = message["role"]
     content = message["content"]
 
@@ -133,11 +89,12 @@ def display_message(message: dict):
             st.write(content)
     else:
         with st.chat_message("assistant"):
-            # Display main answer
-            st.write(content)
-            
-            # Display source info if it exists
-            if message.get("source_info"):
+            # Check if this is the new format with separate source_info
+            if "source_info" in message and message["source_info"]:
+                # Display main answer
+                st.write(content)
+                
+                # Display source info
                 source_info = message["source_info"]
                 if "Confidence Score:" in source_info:
                     source_parts = source_info.split("Confidence Score:")
@@ -147,66 +104,34 @@ def display_message(message: dict):
                     try:
                         confidence = float(confidence_str)
                         st.markdown(f"""
-                        <div style="
-                            background-color: #f8f9fa;
-                            padding: 0.5rem;
-                            border-radius: 0.3rem;
-                            margin-top: 0.5rem;
-                            font-size: 0.9rem;
-                            border-left: 3px solid #28a745;
-                        ">
+                        <div class="source-info">
                             <strong>Source:</strong> {video_info}<br>
                             <strong>Confidence:</strong> {confidence:.2f}
                         </div>
                         """, unsafe_allow_html=True)
                     except:
                         st.markdown(f"""
-                        <div style="
-                            background-color: #f8f9fa;
-                            padding: 0.5rem;
-                            border-radius: 0.3rem;
-                            margin-top: 0.5rem;
-                            font-size: 0.9rem;
-                            border-left: 3px solid #6c757d;
-                        ">
+                        <div class="source-info">
                             <strong>Source:</strong> {video_info}
                         </div>
                         """, unsafe_allow_html=True)
-
-def generate_and_save_response(question):
-    """Generate response and save it with parsed content."""
-    if st.session_state.rag_service:
-        try:
-            start_time = time.time()
-            response = st.session_state.rag_service.generate_response(question)
-            end_time = time.time()
-            
-            # Parse the response content
-            main_answer, source_info = parse_response_content(response.answer)
-            
-            # Create and save assistant message with parsed content
-            assistant_message = {
-                "role": "assistant",
-                "content": main_answer,
-                "source_info": source_info,
-                "timestamp": datetime.now().strftime("%H:%M:%S"),
-                "response_time": f"{end_time - start_time:.2f}s"
-            }
-            st.session_state.messages.append(assistant_message)
-            st.session_state.conversation_count += 1
-            
-            return assistant_message
-            
-        except Exception as e:
-            error_message = {
-                "role": "assistant",
-                "content": f"Error: {str(e)}",
-                "source_info": "",
-                "timestamp": datetime.now().strftime("%H:%M:%S")
-            }
-            st.session_state.messages.append(error_message)
-            return error_message
-    return None
+            else:
+                # Handle old format or simple messages
+                if "**Source:**" in content:
+                    parts = content.split("**Source:**")
+                    answer = parts[0].strip()
+                    source_info = parts[1].strip() if len(parts) > 1 else ""
+                    
+                    st.write(answer)
+                    
+                    if source_info:
+                        st.markdown(f"""
+                        <div class="source-info">
+                            <strong>Source:</strong> {source_info}
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.write(content)
 
 def main():
     """Main application function."""
@@ -268,20 +193,48 @@ def main():
                 }
                 st.session_state.messages.append(user_message)
                 
-                # Generate and save response
-                generate_and_save_response(question)
+                # Generate response
+                if st.session_state.rag_service:
+                    try:
+                        start_time = time.time()
+                        response = st.session_state.rag_service.generate_response(question)
+                        end_time = time.time()
+                        
+                        # Parse response content
+                        if "**Source:**" in response.answer:
+                            parts = response.answer.split("**Source:**")
+                            main_answer = parts[0].strip()
+                            source_info = parts[1].strip() if len(parts) > 1 else ""
+                        else:
+                            main_answer = response.answer
+                            source_info = ""
+                        
+                        # Add response to messages
+                        assistant_message = {
+                            "role": "assistant",
+                            "content": main_answer,
+                            "source_info": source_info,
+                            "timestamp": datetime.now().strftime("%H:%M:%S"),
+                            "response_time": f"{end_time - start_time:.2f}s"
+                        }
+                        st.session_state.messages.append(assistant_message)
+                        st.session_state.conversation_count += 1
+                        
+                    except Exception as e:
+                        error_message = {
+                            "role": "assistant",
+                            "content": f"Error: {str(e)}",
+                            "source_info": "",
+                            "timestamp": datetime.now().strftime("%H:%M:%S")
+                        }
+                        st.session_state.messages.append(error_message)
+                
                 st.rerun()
 
         # Clear conversation
         if st.button("Clear Conversation", use_container_width=True):
             st.session_state.messages = []
             st.session_state.conversation_count = 0
-            st.rerun()
-
-        # Reset app button for troubleshooting
-        if st.button("Reset App", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
             st.rerun()
 
         # Export conversation
@@ -315,60 +268,54 @@ def main():
             "timestamp": datetime.now().strftime("%H:%M:%S")
         }
         st.session_state.messages.append(user_message)
+        display_message(user_message)
 
-        # Display user message immediately
-        with st.chat_message("user"):
-            st.write(prompt)
+        # Generate response
+        if st.session_state.rag_service:
+            try:
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        start_time = time.time()
+                        response = st.session_state.rag_service.generate_response(prompt)
+                        end_time = time.time()
 
-        # Generate and display response
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                assistant_message = generate_and_save_response(prompt)
-            
-            if assistant_message:
-                # Display the generated response
-                st.write(assistant_message["content"])
-                
-                # Display source info if exists
-                if assistant_message.get("source_info"):
-                    source_info = assistant_message["source_info"]
-                    if "Confidence Score:" in source_info:
-                        source_parts = source_info.split("Confidence Score:")
-                        video_info = source_parts[0].strip()
-                        confidence_str = source_parts[1].strip()
-                        
-                        try:
-                            confidence = float(confidence_str)
-                            st.markdown(f"""
-                            <div style="
-                                background-color: #f8f9fa;
-                                padding: 0.5rem;
-                                border-radius: 0.3rem;
-                                margin-top: 0.5rem;
-                                font-size: 0.9rem;
-                                border-left: 3px solid #28a745;
-                            ">
-                                <strong>Source:</strong> {video_info}<br>
-                                <strong>Confidence:</strong> {confidence:.2f}
-                            </div>
-                            """, unsafe_allow_html=True)
-                        except:
-                            st.markdown(f"""
-                            <div style="
-                                background-color: #f8f9fa;
-                                padding: 0.5rem;
-                                border-radius: 0.3rem;
-                                margin-top: 0.5rem;
-                                font-size: 0.9rem;
-                                border-left: 3px solid #6c757d;
-                            ">
-                                <strong>Source:</strong> {video_info}
-                            </div>
-                            """, unsafe_allow_html=True)
-                
-                # Show response time
-                if assistant_message.get("response_time"):
-                    st.caption(f"Response time: {assistant_message['response_time']}")
+                    # Parse response content
+                    if "**Source:**" in response.answer:
+                        parts = response.answer.split("**Source:**")
+                        main_answer = parts[0].strip()
+                        source_info = parts[1].strip() if len(parts) > 1 else ""
+                    else:
+                        main_answer = response.answer
+                        source_info = ""
+
+                    # Display response
+                    st.write(main_answer)
+                    
+                    if source_info:
+                        st.markdown(f"""
+                        <div class="source-info">
+                            <strong>Source:</strong> {source_info}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    # Add response to messages with parsed content
+                    assistant_message = {
+                        "role": "assistant",
+                        "content": main_answer,
+                        "source_info": source_info,
+                        "timestamp": datetime.now().strftime("%H:%M:%S"),
+                        "response_time": f"{end_time - start_time:.2f}s"
+                    }
+                    st.session_state.messages.append(assistant_message)
+                    st.session_state.conversation_count += 1
+
+                    # Show response time
+                    st.caption(f"Response time: {end_time - start_time:.2f}s")
+
+            except Exception as e:
+                st.error(f"Error generating response: {str(e)}")
+        else:
+            st.error("RAG service not available")
 
     # Footer
     st.markdown("---")
