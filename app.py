@@ -356,29 +356,13 @@ def main():
 
                     # Display response
                     st.write(main_answer)
-
+                    
                     if source_info:
-                        lines = source_info.split('\n')
-                        video_title = ""
-                        video_url = ""
-                        confidence = ""
-                        
-                        for line in lines:
-                            if line.startswith("**Source:**"):
-                                video_title = line.replace("**Source:** ", "").strip()
-                            elif line.startswith("**Link:**"):
-                                video_url = line.replace("**Link:** ", "").strip()
-                            elif line.startswith("**Confidence Score:**"):
-                                confidence = line.replace("**Confidence Score:** ", "").strip()
-                        
-                        if video_url and video_title:
-                            st.markdown(f"""
-                            <div class="source-info">
-                                <strong>Source:</strong> {video_title}<br>
-                                <strong>Link:</strong> <a href="{video_url}" target="_blank">{video_url}</a><br>
-                                <strong>Confidence Score:</strong> {confidence}
-                            </div>
-                            """, unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div class="source-info">
+                            <strong>Source:</strong> {source_info}
+                        </div>
+                        """, unsafe_allow_html=True)
 
                     # Add response to messages with parsed content
                     assistant_message = {
