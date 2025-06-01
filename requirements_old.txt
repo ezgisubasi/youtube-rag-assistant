@@ -1,0 +1,39 @@
+# Core Python dependencies
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+PyYAML>=6.0
+dataclasses-json>=0.6.0
+typing-extensions>=4.0.0
+
+# YouTube processing
+pytubefix>=6.0.0
+openai-whisper>=20231117
+
+# LangChain ecosystem
+langchain>=0.1.0
+langchain-google-genai>=2.0.0
+langchain-community>=0.0.10
+langchain-qdrant>=0.1.0
+langchain-huggingface>=0.1.0
+
+# Vector database and embeddings
+qdrant-client>=1.7.0
+sentence-transformers>=3.0.0
+
+# Machine Learning dependencies
+torch>=2.4.0
+numpy>=2.0.0
+transformers>=4.40.0
+
+# Google AI (Gemini)
+google-generativeai>=0.8.0
+
+# Web framework
+streamlit>=1.28.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# CLI and utilities
+click>=8.1.0
+rich>=13.0.0
+tqdm>=4.66.0
