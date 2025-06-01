@@ -60,7 +60,7 @@ class RAGService:
         self.answer_prompt = """Sen bir YouTube video içeriklerine dayanan AI asistansın. 
 Görevin, kullanıcının sorusunu yalnızca video içeriğine dayanarak ve özlü şekilde yanıtlamak.
 
-Aşağıdaki video içeriğine dayanarak soruyu Türkçe ve kısa cevapla:
+Aşağıdaki video içeriğinde bulunan bilgileri kullanarak kısa ve öz bir yanıt ver fakat videodan bahsetme:
 Video İçeriği: {video_content}
 
 Soru: {question}
