@@ -1,61 +1,87 @@
 # YouTube RAG Assistant
 
-A specialized AI chatbot that provides leadership guidance using YouTube video content as a knowledge base. Built with LangChain, Qdrant, and Gemini AI.
+A professional AI-powered chatbot that provides leadership guidance using YouTube video content as a knowledge base. Built with modern RAG (Retrieval-Augmented Generation) architecture using LangChain, Qdrant, and Google Gemini AI.
 
-## 🎯 Project Overview
+## Project Overview
 
-This project demonstrates modern RAG (Retrieval-Augmented Generation) architecture by:
-- Extracting knowledge from YouTube video transcripts
-- Creating semantic search capabilities with vector embeddings  
-- Providing contextual AI responses with source attribution
-- Supporting multilingual content (Turkish/English)
+This project demonstrates a complete RAG pipeline that:
+- Extracts knowledge from YouTube video transcripts
+- Creates semantic search capabilities with vector embeddings
+- Provides contextual AI responses with source attribution
+- Delivers responses through a professional web interface
+- Supports multilingual content (Turkish/English)
 
-## 🏗️ Architecture
+## Live Demo
+
+**Deployed Application:** [Your Streamlit Cloud URL]
+
+## Architecture
 
 ```
-YouTube Playlist → Audio Download → Transcription → Vector Store → RAG → Chat Interface
+YouTube Playlist → Audio Download → Transcription → Vector Store → RAG → Web Interface
      ↓                   ↓             ↓            ↓               ↓         ↓
   pytubefix        OpenAI Whisper    BGE-M3       Qdrant         Gemini AI  Streamlit
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 youtube-rag-assistant/
+├── app.py                        # Main Streamlit web application
+├── requirements.txt              # Python dependencies
 ├── config/
-│   ├── settings.yaml          # Application configuration
-│   └── prompts.yaml          # LLM prompt templates
+│   ├── settings.yaml            # Application configuration
+│   └── prompts.yaml            # LLM prompt templates
 ├── src/
 │   ├── core/
-│   │   ├── config.py         # Configuration management
-│   │   ├── models.py         # Data models and types
-│   │   └── utils.py          # Utility functions
+│   │   ├── config.py           # Configuration management
+│   │   └── models.py           # Data models and types
 │   └── services/
-│       ├── youtube_service.py    # YouTube video downloading
-│       ├── transcription_service.py  # Audio transcription
-│       ├── vector_service.py     # Vector search and embeddings
-│       └── rag_service.py       # RAG implementation (TBD)
-├── data/                     # Data storage (gitignored)
-├── requirements.txt          # Python dependencies
-└── README.md                # This file
+│       ├── youtube_service.py  # YouTube video downloading
+│       ├── transcription_service.py # Audio transcription
+│       ├── vector_service.py   # Vector search and embeddings
+│       └── rag_service.py     # RAG implementation
+├── data/                       # Data storage (gitignored)
+└── README.md                  # This file
 ```
 
+## Implementation Status
 
-## ✅ Current Implementation Status
+### Completed Components
+- **YouTube Service**: Download audio from playlists
+- **Transcription Service**: Audio-to-text with OpenAI Whisper
+- **Vector Service**: Semantic search with LangChain + Qdrant
+- **RAG Service**: LLM integration with contextual responses
+- **Web Interface**: Professional Streamlit chat application
+- **Configuration System**: YAML-based configuration management
+- **Data Models**: Type-safe data structures
 
-### Completed Components:
-- ✅ **YouTube Service**: Download audio from playlists
-- ✅ **Transcription Service**: Audio-to-text with Whisper
-- ✅ **Vector Service**: Semantic search with LangChain + Qdrant
-- ✅ **Configuration System**: YAML-based configuration
-- ✅ **Data Models**: Type-safe data structures
+### Key Features
+- **Semantic Search**: Advanced similarity search using BGE-M3 embeddings
+- **Source Attribution**: Every response includes video source and confidence score
+- **Clickable Links**: Direct access to original YouTube videos
+- **Professional UI**: Dark theme with clean, modern design
+- **Export Functionality**: Download conversation history
+- **Example Questions**: Quick access to common leadership queries
 
-### In Progress:
-- 🔄 **RAG Service**: LLM integration with context
-- 🔄 **Streamlit Interface**: Web chat application
-- 🔄 **Voice Output**: Text-to-speech integration
+## Technology Stack
 
-## 🚀 Quick Start
+### Core Technologies
+- **Python 3.10+**: Main programming language
+- **Streamlit**: Web interface framework
+- **LangChain**: RAG framework and document processing
+- **Qdrant**: Vector database for semantic search
+- **Google Gemini AI**: Large language model for response generation
+- **HuggingFace**: Embedding models (BGE-M3)
+- **OpenAI Whisper**: Audio transcription
+
+### Supporting Libraries
+- **pytubefix**: YouTube video downloading
+- **sentence-transformers**: Text embeddings
+- **pydantic**: Data validation
+- **PyYAML**: Configuration management
+
+## Quick Start
 
 ### 1. Clone and Setup
 ```bash
@@ -73,57 +99,20 @@ cp .env.template .env
 echo "GEMINI_API_KEY=your_api_key_here" >> .env
 ```
 
-### 3. Run Pipeline
+### 3. Run the Application
 ```bash
-# Download YouTube audio
-python src/services/youtube_service.py
-
-# Transcribe audio to text
-python src/services/transcription_service.py
-
-# Create vector store
-python src/services/vector_service.py
+streamlit run app.py
 ```
 
-### 4. Test Search
-```python
-from src.services.vector_service import VectorService
+## Configuration
 
-service = VectorService()
-service.create_vector_store()
-
-# Search for content
-results = service.search("sürdürülebilirlik")
-for result in results:
-    print(f"{result.video_title}: {result.similarity_score:.3f}")
-```
-
-## 🛠️ Tech Stack
-
-### Core Technologies:
-- **Python 3.10+**: Main programming language
-- **LangChain**: RAG framework and document processing
-- **Qdrant**: Vector database for semantic search
-- **HuggingFace**: Embedding models (BGE-M3)
-- **OpenAI Whisper**: Audio transcription
-- **Google Gemini**: Large language model
-
-### Supporting Libraries:
-- **pytubefix**: YouTube video downloading
-- **sentence-transformers**: Text embeddings
-- **streamlit**: Web interface (planned)
-- **pydantic**: Data validation
-- **PyYAML**: Configuration management
-
-## 🔧 Configuration
-
-### Environment Variables:
+### Environment Variables
 ```bash
 GEMINI_API_KEY=your_gemini_api_key
 YOUTUBE_PLAYLIST_URL=https://youtube.com/playlist?list=...
 ```
 
-### Settings (config/settings.yaml):
+### Settings (config/settings.yaml)
 ```yaml
 # Model Configuration
 model_name: gemini-2.0-flash-exp
@@ -139,58 +128,118 @@ whisper_model: medium
 language: tr
 ```
 
-## 📊 Key Features
+## Data Pipeline (Optional)
 
-### 🎯 **Specialized Knowledge Base**
-- Extracts insights from leadership/business YouTube content
-- Maintains source attribution for transparency
-- Supports multilingual content processing
+If you want to process your own YouTube playlist:
 
-### 🔍 **Advanced Search**
-- Semantic similarity search (not just keywords)
-- Configurable relevance thresholds
-- Chunk-based retrieval for precise context
-
-### 🤖 **Modern AI Stack**
-- State-of-the-art embedding models
-- Efficient vector storage and retrieval
-- Ready for LLM integration
-
-## 🧪 Testing
-
-### Test Vector Service:
-```python
-# Run comprehensive tests
-python src/services/vector_service.py
-
-# Test specific queries
-from src.services.vector_service import VectorService
-service = VectorService()
-service.create_vector_store()
-
-# Results 
-results = service.search("sürdürülebilirlik")  # Turkish
+### 1. Download YouTube Audio
+```bash
+python src/services/youtube_service.py
 ```
 
-## 🎯 Next Steps
+### 2. Transcribe Audio to Text
+```bash
+python src/services/transcription_service.py
+```
 
-1. **RAG Service Integration**: Connect vector search with Gemini AI
-2. **Streamlit Interface**: Build interactive chat interface
-3. **Voice Output**: Add text-to-speech capabilities
-4. **Web Deployment**: Deploy to Streamlit Cloud or Heroku
-5. **Evaluation Metrics**: Add retrieval and generation quality metrics
+### 3. Create Vector Store
+```bash
+python src/services/vector_service.py
+```
 
-## 🤝 Contributing
+### 4. Test Search
+```python
+from src.services.vector_service import VectorService
 
-This is a portfolio/research project demonstrating modern RAG architecture. Feel free to:
-- Report issues or suggestions
-- Fork for your own experiments
-- Contribute improvements via pull requests
+service = VectorService()
+service.initialize_vector_store()
 
-## 📄 License
+# Search for content
+results = service.search("leadership")
+for result in results:
+    print(f"{result.video_title}: {result.similarity_score:.3f}")
+```
+
+## Usage
+
+### Web Interface
+1. Open the Streamlit application
+2. Use example questions or type your own
+3. View responses with source attribution
+4. Click video links to access original content
+5. Export conversation history if needed
+
+### Example Queries
+- "Nasıl iyi lider olunur?" (How to become a good leader?)
+- "Takım çalışması neden önemlidir?" (Why is teamwork important?)
+- "Başarılı iş stratejileri nelerdir?" (What are successful business strategies?)
+
+## Key Features Demonstration
+
+### Semantic Search
+The system uses advanced embeddings to find relevant content based on meaning, not just keywords.
+
+### Source Attribution
+Every response includes:
+- Video title and clickable YouTube link
+- Confidence score indicating relevance
+- Direct access to original source material
+
+### Professional Interface
+- Clean, dark theme design
+- Real-time response generation
+- Conversation history management
+- Export functionality
+
+## Deployment
+
+### Streamlit Cloud (Recommended)
+1. Push code to GitHub
+2. Connect repository to Streamlit Cloud
+3. Set environment variables in secrets
+4. Deploy automatically
+
+### Local Development
+```bash
+streamlit run app.py
+```
+
+## Project Highlights
+
+This project showcases:
+- **Modern RAG Architecture**: Complete pipeline from data ingestion to user interface
+- **Production-Ready Code**: Clean architecture with proper separation of concerns
+- **Professional UI/UX**: Streamlit application with custom styling
+- **Multilingual Support**: Handles Turkish and English content
+- **Source Transparency**: Full attribution to original video sources
+- **Scalable Design**: Modular architecture for easy extension
+
+## Technical Decisions
+
+### Why These Technologies?
+- **Qdrant**: High-performance vector database with excellent Python integration
+- **BGE-M3**: State-of-the-art multilingual embedding model
+- **Gemini AI**: Advanced language model with good Turkish support
+- **Streamlit**: Rapid development of professional web interfaces
+
+### Architecture Benefits
+- **Modular Design**: Each service can be developed and tested independently
+- **Configuration Management**: YAML-based settings for easy deployment
+- **Type Safety**: Pydantic models ensure data consistency
+- **Error Handling**: Comprehensive error handling throughout the pipeline
+
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🎥 Demo
+## Contributing
 
-*Demo video and live deployment links coming soon...*
+This is a portfolio project demonstrating modern RAG architecture. Feel free to:
+- Fork for your own experiments
+- Report issues or suggestions
+- Contribute improvements via pull requests
+
+## Contact
+
+**Developer**: Ezgi Subaşı
+**Project**: YouTube RAG Assistant Portfolio Project
