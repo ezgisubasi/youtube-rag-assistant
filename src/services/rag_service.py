@@ -74,11 +74,6 @@ Yanıt talimatları:
 - Yapay ya da fazla resmi konuşma, samimi ama profesyonel ol
 
 Yanıt:"""
-
-
-Yanıt:"""
-
-        
         print("RAG Service initialized successfully")
     
     def get_best_video(self, query: str) -> Optional[SearchResult]:
