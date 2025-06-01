@@ -11,10 +11,16 @@ from typing import List, Optional
 import time
 from datetime import datetime
 
+# Add src to Python path
+current_dir = Path(__file__).parent
+src_path = current_dir / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
 try:
-    from src.services.rag_service import RAGService
-    from src.core.models import RAGResponse
-    from src.core.config import get_config, validate_config
+    from services.rag_service import RAGService
+    from core.models import RAGResponse
+    from core.config import get_config, validate_config
 except ImportError as e:
     st.error(f"Import error: {e}")
     st.stop()
