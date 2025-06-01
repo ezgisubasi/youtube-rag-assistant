@@ -234,12 +234,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
-This is a portfolio project demonstrating modern RAG architecture. Feel free to:
+This is a research project demonstrating modern RAG architecture. Feel free to:
 - Fork for your own experiments
 - Report issues or suggestions
 - Contribute improvements via pull requests
-
-## Contact
-
-**Developer**: Ezgi Subaşı
-**Project**: YouTube RAG Assistant Portfolio Project
