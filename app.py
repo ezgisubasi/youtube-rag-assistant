@@ -119,7 +119,7 @@ def load_rag_service():
         return None, str(e)
 
 def display_message(message: dict):
-    """Display a chat message - simple version."""
+    """Display a chat message with clickable links."""
     role = message["role"]
     content = message["content"]
 
@@ -129,53 +129,81 @@ def display_message(message: dict):
     else:
         with st.chat_message("assistant"):
             if "source_info" in message and message["source_info"]:
+                # Display main answer
                 st.write(content)
                 
+                # Display source info with clickable links
                 source_info = message["source_info"]
-                if "Confidence Score:" in source_info:
-                    source_parts = source_info.split("Confidence Score:")
-                    video_info = source_parts[0].strip()
-                    confidence_str = source_parts[1].strip()
-                    
-                    # Extract YouTube URL and make it clickable
-                    import re
-                    youtube_pattern = r'(https://www\.youtube\.com/watch\?v=[\w-]+)'
-                    video_info_with_link = re.sub(youtube_pattern, r'<a href="\1" target="_blank">\1</a>', video_info)
-                    
-                    try:
-                        confidence = float(confidence_str)
-                        st.markdown(f"""
-                        <div class="source-info">
-                            <strong>Source:</strong> {video_info_with_link}<br>
-                            <strong>Confidence:</strong> {confidence:.2f}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    except:
-                        st.markdown(f"""
-                        <div class="source-info">
-                            <strong>Source:</strong> {video_info_with_link}
-                        </div>
-                        """, unsafe_allow_html=True)
+                
+                # Parse the new format
+                lines = source_info.split('\n')
+                video_title = ""
+                video_url = ""
+                confidence = ""
+                
+                for line in lines:
+                    if line.startswith("**Source:**"):
+                        video_title = line.replace("**Source:**", "").strip()
+                    elif line.startswith("**Link:**"):
+                        video_url = line.replace("**Link:**", "").strip()
+                    elif line.startswith("**Confidence Score:**"):
+                        confidence = line.replace("**Confidence Score:**", "").strip()
+                
+                # Create formatted output with clickable link
+                if video_url:
+                    st.markdown(f"""
+                    <div class="source-info">
+                        <strong>Source:</strong> {video_title}<br>
+                        <strong>Link:</strong> <a href="{video_url}" target="_blank">{video_url}</a><br>
+                        <strong>Confidence Score:</strong> {confidence}
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div class="source-info">
+                        <strong>Source:</strong> {video_title}<br>
+                        <strong>Confidence Score:</strong> {confidence}
+                    </div>
+                    """, unsafe_allow_html=True)
+            
             else:
-                # Handle old format or simple messages
+                # Handle old format messages
                 if "**Source:**" in content:
                     parts = content.split("**Source:**")
                     answer = parts[0].strip()
-                    source_info = parts[1].strip() if len(parts) > 1 else ""
+                    source_section = parts[1].strip() if len(parts) > 1 else ""
                     
                     st.write(answer)
                     
-                    if source_info:
-                        # Make YouTube links clickable
-                        import re
-                        youtube_pattern = r'(https://www\.youtube\.com/watch\?v=[\w-]+)'
-                        source_info_with_link = re.sub(youtube_pattern, r'<a href="\1" target="_blank">\1</a>', source_info)
+                    if source_section:
+                        # Parse old format and convert to new format
+                        lines = source_section.split('\n')
+                        video_title = ""
+                        video_url = ""
+                        confidence = ""
                         
-                        st.markdown(f"""
-                        <div class="source-info">
-                            <strong>Source:</strong> {source_info_with_link}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        for line in lines:
+                            if "**Link:**" in line:
+                                video_url = line.replace("**Link:**", "").strip()
+                            elif "**Confidence Score:**" in line:
+                                confidence = line.replace("**Confidence Score:**", "").strip()
+                            elif line and not line.startswith("**"):
+                                video_title = line.strip()
+                        
+                        if video_url:
+                            st.markdown(f"""
+                            <div class="source-info">
+                                <strong>Source:</strong> {video_title}<br>
+                                <strong>Link:</strong> <a href="{video_url}" target="_blank">{video_url}</a><br>
+                                <strong>Confidence Score:</strong> {confidence}
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"""
+                            <div class="source-info">
+                                <strong>Source:</strong> {source_section}
+                            </div>
+                            """, unsafe_allow_html=True)
                 else:
                     st.write(content)
 
