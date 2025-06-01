@@ -127,8 +127,10 @@ def display_message(message: dict):
                 answer = parts[0].strip()
                 source_info = parts[1].strip() if len(parts) > 1 else ""
 
+                # Display main answer
                 st.write(answer)
 
+                # Display source info in a separate container
                 if source_info:
                     # Extract video title, URL and confidence
                     if "Confidence Score:" in source_info:
@@ -138,15 +140,31 @@ def display_message(message: dict):
 
                         try:
                             confidence = float(confidence_str)
-                            st.markdown(f"""
-                            <div class="source-info">
-                                <strong>📹 Source:</strong> {video_info}<br>
-                                <strong>🎯 Confidence:</strong> {format_confidence_score(confidence)}
-                            </div>
-                            """, unsafe_allow_html=True)
+                            # Use a container to prevent color changes
+                            with st.container():
+                                st.markdown(f"""
+                                <div style="
+                                    background-color: #f8f9fa;
+                                    padding: 0.5rem;
+                                    border-radius: 0.3rem;
+                                    margin-top: 0.5rem;
+                                    font-size: 0.9rem;
+                                    border-left: 3px solid #28a745;
+                                ">
+                                    <strong>📹 Source:</strong> {video_info}<br>
+                                    <strong>🎯 Confidence:</strong> {confidence:.2f}
+                                </div>
+                                """, unsafe_allow_html=True)
                         except:
                             st.markdown(f"""
-                            <div class="source-info">
+                            <div style="
+                                background-color: #f8f9fa;
+                                padding: 0.5rem;
+                                border-radius: 0.3rem;
+                                margin-top: 0.5rem;
+                                font-size: 0.9rem;
+                                border-left: 3px solid #6c757d;
+                            ">
                                 <strong>📹 Source:</strong> {video_info}
                             </div>
                             """, unsafe_allow_html=True)
