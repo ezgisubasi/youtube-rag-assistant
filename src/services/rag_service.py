@@ -37,8 +37,9 @@ class FormattedResponse:
     def format_output(self) -> str:
         """Format the complete response with source."""
         formatted_response = f"{self.answer}\n\n"
-        formatted_response += "**Source:** " + self.video_title + " " + self.video_url + " "
-        formatted_response += f"Confidence Score: {self.confidence_score:.2f}"
+        formatted_response += "**Source:** " + self.video_title + "\n"
+        formatted_response += f"**Link:** {self.video_url}\n"
+        formatted_response += f"**Confidence Score:** {self.confidence_score:.2f}"
         return formatted_response
 
 class RAGService:

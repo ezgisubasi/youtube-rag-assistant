@@ -47,38 +47,51 @@ st.markdown("""
        margin-bottom: 2rem;
    }
    .source-info {
-       background-color: #2d2d2d;
-       padding: 0.5rem;
-       border-radius: 0.3rem;
+       background-color: #f5f5f5;
+       padding: 0.8rem;
+       border-radius: 0.5rem;
        margin-top: 0.5rem;
        font-size: 0.9rem;
-       border-left: 3px solid #28a745;
-       color: #ffffff;
+       border-left: 4px solid #28a745;
+       color: #333333;
    }
    
    .stChatMessage {
-       background-color: #000000;
-       color: #ffffff;
+       background-color: #f9f9f9;
+       color: #333333;
+       border-radius: 1rem;
+       margin: 0.5rem 0;
    }
    
    .stChatMessage [data-testid="chatAvatarIcon-assistant"] {
-       background-color: #333333;
+       background-color: #e8f5e8;
    }
    
    .stChatMessage [data-testid="chatAvatarIcon-user"] {
-       background-color: #444444;
+       background-color: #e3f2fd;
    }
    
    .stChatMessage p, .stChatMessage div, .stChatMessage span {
-       color: #ffffff;
+       color: #333333;
    }
    
    .stChatMessage .stMarkdown {
-       color: #ffffff;
+       color: #333333;
    }
    
    .stChatMessage .stMarkdown p {
-       color: #ffffff;
+       color: #333333;
+   }
+   
+   .source-info a {
+       color: #1f77b4;
+       text-decoration: none;
+       font-weight: bold;
+   }
+   
+   .source-info a:hover {
+       color: #0056b3;
+       text-decoration: underline;
    }
 </style>
 """, unsafe_allow_html=True)
@@ -115,30 +128,32 @@ def display_message(message: dict):
             st.write(content)
     else:
         with st.chat_message("assistant"):
-            # Check if this is the new format with separate source_info
             if "source_info" in message and message["source_info"]:
-                # Display main answer
                 st.write(content)
                 
-                # Display source info
                 source_info = message["source_info"]
                 if "Confidence Score:" in source_info:
                     source_parts = source_info.split("Confidence Score:")
                     video_info = source_parts[0].strip()
                     confidence_str = source_parts[1].strip()
                     
+                    # Extract YouTube URL and make it clickable
+                    import re
+                    youtube_pattern = r'(https://www\.youtube\.com/watch\?v=[\w-]+)'
+                    video_info_with_link = re.sub(youtube_pattern, r'<a href="\1" target="_blank">\1</a>', video_info)
+                    
                     try:
                         confidence = float(confidence_str)
                         st.markdown(f"""
                         <div class="source-info">
-                            <strong>Source:</strong> {video_info}<br>
+                            <strong>Source:</strong> {video_info_with_link}<br>
                             <strong>Confidence:</strong> {confidence:.2f}
                         </div>
                         """, unsafe_allow_html=True)
                     except:
                         st.markdown(f"""
                         <div class="source-info">
-                            <strong>Source:</strong> {video_info}
+                            <strong>Source:</strong> {video_info_with_link}
                         </div>
                         """, unsafe_allow_html=True)
             else:
@@ -151,9 +166,14 @@ def display_message(message: dict):
                     st.write(answer)
                     
                     if source_info:
+                        # Make YouTube links clickable
+                        import re
+                        youtube_pattern = r'(https://www\.youtube\.com/watch\?v=[\w-]+)'
+                        source_info_with_link = re.sub(youtube_pattern, r'<a href="\1" target="_blank">\1</a>', source_info)
+                        
                         st.markdown(f"""
                         <div class="source-info">
-                            <strong>Source:</strong> {source_info}
+                            <strong>Source:</strong> {source_info_with_link}
                         </div>
                         """, unsafe_allow_html=True)
                 else:
