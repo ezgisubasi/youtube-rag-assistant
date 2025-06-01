@@ -45,19 +45,6 @@ st.markdown("""
         margin-bottom: 2rem;
     }
             
-  .stChatMessage {
-        background-color: transparent !important;
-    }
-    
-    .source-info {
-        background-color: #f8f9fa !important;
-        padding: 0.5rem !important;
-        border-radius: 0.3rem !important;
-        margin-top: 0.5rem !important;
-        font-size: 0.9rem !important;
-        border-left: 3px solid #28a745 !important;
-    }
-            
     .chat-message {
         padding: 1rem;
         border-radius: 0.5rem;
