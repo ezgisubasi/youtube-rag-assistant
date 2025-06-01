@@ -57,24 +57,24 @@ class RAGService:
         self.vector_service.initialize_vector_store()
         
         # Simple prompt template
-        self.answer_prompt = """Sen bir YouTube video içeriğine dayanan Türkçe konuşan bir yapay zekâ asistansın. 
-Kullanıcının sorduğu soruyu sadece aşağıdaki video içeriğine dayanarak, doğal bir dille, kısa ama doyurucu bir şekilde yanıtlamalısın.
+        self.answer_prompt = """Sen bir yapay zekâ asistansın. Kullanıcının sorduğu soruyu, yalnızca aşağıdaki içerikten yola çıkarak, içerikten alıntı yapmadan ve 'video', 'içerik' gibi kelimeleri kullanmadan doğal bir şekilde yanıtlamalısın.
 
-Video İçeriği:
+İçerik:
 {video_content}
 
 Soru:
 {question}
 
 Yanıt talimatları:
-- Video içeriğinden ayrılmadan soruyu yanıtla
-- Ne çok kısa ne çok uzun: 4–6 cümlelik doğal bir açıklama yap
-- Anlaşılır, akıcı ve insani bir ton kullan
-- Gerekiyorsa kısa bir örnek ya da açıklayıcı bir cümle ekle
-- Yapay ya da fazla resmi konuşma, samimi ama profesyonel ol
+- Cevabını kendi bilginmiş gibi yaz: video anlatmıyorsun, açıklıyorsun
+- 'Videoda', 'içerikte', 'anlatılıyor' gibi kelimeler kullanma
+- 4–6 cümlelik sade, akıcı ve doğal bir yanıt ver
+- Samimi ama tutarlı bir tonla yaz
+- Bilgiyi içselleştirmiş ve anlayarak açıklıyormuşsun gibi davran
 
 Yanıt:"""
-        print("RAG Service initialized successfully")
+    
+    print("RAG Service initialized successfully")
     
     def get_best_video(self, query: str) -> Optional[SearchResult]:
         """Get the most relevant video."""
