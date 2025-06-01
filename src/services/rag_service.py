@@ -1,5 +1,4 @@
-"""RAG service with dataclass structure and formatted output."""
-
+# src/services/rag_service.py
 from typing import List, Optional
 from dataclasses import dataclass
 import sys
@@ -18,7 +17,6 @@ from services.vector_service import VectorService
 
 @dataclass
 class RAGConfig:
-    """RAG service configuration."""
     model_name: str
     api_key: str
     temperature: float = 0.7
@@ -26,27 +24,10 @@ class RAGConfig:
     min_similarity_threshold: float = 0.25
     search_top_k: int = 5
 
-@dataclass
-class FormattedResponse:
-    """Formatted response structure."""
-    answer: str
-    video_title: str
-    video_url: str
-    confidence_score: float
-    
-    def format_output(self) -> str:
-        """Format the complete response with source."""
-        formatted_response = f"{self.answer}\n\n"
-        formatted_response += "**Source:** " + self.video_title + "\n"
-        formatted_response += "**Link:** " + self.video_url + "\n"
-        formatted_response += f"**Confidence Score:** {self.confidence_score:.2f}"
-        return formatted_response
-
 class RAGService:
-    """Clean RAG service with structured output."""
+    """Clean RAG service for YouTube content."""
     
     def __init__(self):
-        """Initialize RAG service."""
         print("Initializing RAG Service...")
         
         # Load configuration
@@ -54,7 +35,7 @@ class RAGService:
         gemini_api_key = config.gemini_api_key or os.getenv("GEMINI_API_KEY")
         
         if not gemini_api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
+            raise ValueError("GEMINI_API_KEY not found")
         
         # Create RAG configuration
         self.config = RAGConfig(
@@ -75,33 +56,22 @@ class RAGService:
         self.vector_service = VectorService()
         self.vector_service.initialize_vector_store()
         
-        # Clean prompt template for answer generation
-        self.answer_prompt = """TALİMAT: Aşağıdaki video içeriğine dayanarak kullanıcının sorusunu açık, yapılandırılmış ve Türkçe olarak yanıtla.
+        # Simple prompt template
+        self.answer_prompt = """Aşağıdaki video içeriğine dayanarak soruyu Türkçe yanıtla:
 
-VIDEO İÇERİĞİ:
-{video_content}
+Video İçeriği: {video_content}
 
-KULLANICI SORUSU:
-{question}
+Soru: {question}
 
-GÖREVLER:
-
-Yalnızca verilen video içeriğini kullanarak yanıt oluştur.
-Yanıtı, video içeriğinden alınan bilgileri genel geçer bilgi gibi sunarak oluştur. "Videoya göre" veya "videodaki kişiye göre" gibi ifadelerden kaçın.
-Net, akıcı ve yapılandırılmış bir metin yaz.
-Gerekirse örnekler ve açıklayıcı detaylar ekle.
-Türkçe yaz.
-Video başlığı, bağlantısı ve güven skorunu yanıta dahil etme; bu bilgiler dışarıdan eklenecek.
-
-YANITINIZ:"""
+Yanıt:"""
         
         print("RAG Service initialized successfully")
     
     def get_best_video(self, query: str) -> Optional[SearchResult]:
-        """Get the most relevant video based on highest confidence score."""
+        """Get the most relevant video."""
         try:
             search_results = self.vector_service.search(
-                query=query, 
+                query=query,
                 top_k=self.config.search_top_k
             )
             
@@ -110,11 +80,11 @@ YANITINIZ:"""
             
             # Filter results above minimum threshold
             filtered_results = [
-                result for result in search_results 
+                result for result in search_results
                 if result.similarity_score >= self.config.min_similarity_threshold
             ]
             
-            # Return best result or first available if none meet threshold
+            # Return best result
             best_video = filtered_results[0] if filtered_results else search_results[0]
             
             print(f"Selected video: {best_video.video_title}")
@@ -126,8 +96,8 @@ YANITINIZ:"""
             print(f"Error finding best video: {e}")
             return None
     
-    def generate_structured_answer(self, question: str, video: SearchResult) -> str:
-        """Generate structured answer based on video content."""
+    def generate_answer(self, question: str, video: SearchResult) -> str:
+        """Generate answer based on video content."""
         try:
             prompt = self.answer_prompt.format(
                 video_content=video.text_content,
@@ -142,7 +112,7 @@ YANITINIZ:"""
             return "Yanıt oluşturulurken bir hata oluştu."
     
     def generate_response(self, query: str) -> RAGResponse:
-        """Generate complete response with formatted output."""
+        """Generate complete response."""
         try:
             print(f"Processing query: {query}")
             
@@ -152,26 +122,18 @@ YANITINIZ:"""
             if not best_video:
                 return RAGResponse(
                     query=query,
-                    answer="Bu soruya yanıt verebilmek için uygun video içeriği bulunamadı. Lütfen farklı kelimeler deneyin.",
+                    answer="Bu soruya yanıt verebilmek için uygun video içeriği bulunamadı.",
                     sources=[],
                     confidence_score=0.0
                 )
             
-            # Generate structured answer
-            answer = self.generate_structured_answer(query, best_video)
+            # Generate answer
+            answer = self.generate_answer(query, best_video)
             
-            # Create formatted response
-            formatted_response = FormattedResponse(
-                answer=answer,
-                video_title=best_video.video_title,
-                video_url=best_video.video_url,
-                confidence_score=best_video.similarity_score
-            )
-            
-            # Return RAG response with formatted output
+            # Return clean response with sources
             return RAGResponse(
                 query=query,
-                answer=formatted_response.format_output(),
+                answer=answer,
                 sources=[best_video],
                 confidence_score=best_video.similarity_score
             )
@@ -184,34 +146,3 @@ YANITINIZ:"""
                 sources=[],
                 confidence_score=0.0
             )
-
-def main():
-    """Test function for RAG service."""
-    print("Testing Clean RAG Service")
-    print("=" * 40)
-    
-    try:
-        service = RAGService()
-        
-        test_queries = [
-            "Nasıl iyi lider olunur?",
-            "Liderlik nasıl geliştirilir?",
-            "Başarı faktörleri nelerdir?"
-        ]
-        
-        for query in test_queries:
-            print(f"\\nTesting query: {query}")
-            print("-" * 30)
-            
-            response = service.generate_response(query)
-            
-            print(f"Confidence: {response.confidence_score:.3f}")
-            print(f"Sources: {len(response.sources)}")
-            print(f"Answer:\\n{response.answer}")
-            print("-" * 30)
-            
-    except Exception as e:
-        print(f"Test failed: {e}")
-
-if __name__ == "__main__":
-    main()

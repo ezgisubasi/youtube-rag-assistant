@@ -1,17 +1,16 @@
 """
-YouTube RAG Assistant - Streamlit Web Interface
-A specialized AI chatbot that provides leadership guidance from YouTube video content.
+YouTube RAG Assistant - Professional Portfolio Project
+A specialized AI chatbot that provides leadership guidance using YouTube video content.
 """
 
 import streamlit as st
 import sys
 import os
 from pathlib import Path
-from typing import List, Optional
 import time
 from datetime import datetime
 
-# Add src to path for imports
+# Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
 
 try:
@@ -30,73 +29,53 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Professional CSS styling
 st.markdown("""
 <style>
-   .main-header {
-       font-size: 2.5rem;
-       font-weight: bold;
-       color: #64b5f6;
-       text-align: center;
-       margin-bottom: 0.5rem;
-   }
-   .sub-header {
-       font-size: 1.2rem;
-       color: #b0b0b0;
-       text-align: center;
-       margin-bottom: 2rem;
-   }
-   .source-info {
-       background-color: #2d2d2d;
-       padding: 0.8rem;
-       border-radius: 0.5rem;
-       margin-top: 0.5rem;
-       font-size: 0.9rem;
-       border-left: 4px solid #4caf50;
-       color: #ffffff;
-   }
-   
-   .stChatMessage {
-       background-color: #1e1e1e;
-       color: #ffffff;
-       border-radius: 1rem;
-       margin: 0.5rem 0;
-   }
-   
-   .stChatMessage [data-testid="chatAvatarIcon-assistant"] {
-       background-color: #2d4a2d;
-   }
-   
-   .stChatMessage [data-testid="chatAvatarIcon-user"] {
-       background-color: #1a3a5c;
-   }
-   
-   .stChatMessage p, .stChatMessage div, .stChatMessage span {
-       color: #ffffff;
-   }
-   
-   .stChatMessage .stMarkdown {
-       color: #ffffff;
-   }
-   
-   .stChatMessage .stMarkdown p {
-       color: #ffffff;
-   }
-   
-   .source-info a {
-       color: #64b5f6;
-       text-decoration: none;
-       font-weight: bold;
-   }
-   
-   .source-info a:hover {
-       color: #90caf9;
-       text-decoration: underline;
-   }
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #64b5f6;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+    .sub-header {
+        font-size: 1.2rem;
+        color: #b0b0b0;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .source-info {
+        background-color: #2d2d2d;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+        border-left: 4px solid #4caf50;
+        color: #ffffff;
+        font-size: 0.9rem;
+    }
+    .source-info a {
+        color: #64b5f6;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .source-info a:hover {
+        color: #90caf9;
+        text-decoration: underline;
+    }
+    .stChatMessage {
+        background-color: #1e1e1e;
+        color: #ffffff;
+    }
+    .stChatMessage p, .stChatMessage div, .stChatMessage span {
+        color: #ffffff;
+    }
+    .stChatMessage .stMarkdown {
+        color: #ffffff;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
 def initialize_session_state():
     """Initialize session state variables."""
     if "messages" not in st.session_state:
@@ -118,86 +97,74 @@ def load_rag_service():
     except Exception as e:
         return None, str(e)
 
-def display_message(message: dict):
-    """Display a chat message with consistent formatting."""
-    role = message["role"]
-    content = message["content"]
+def display_response_with_source(content, sources):
+    """Display response with properly formatted source information."""
+    # Display the main answer
+    st.write(content)
+    
+    # Display source information if available
+    if sources and len(sources) > 0:
+        source = sources[0]  # Get first source
+        video_title = getattr(source, 'video_title', 'Unknown')
+        video_url = getattr(source, 'video_url', '#')
+        confidence = getattr(source, 'similarity_score', 0.0)
+        
+        st.markdown(f"""
+        <div class="source-info">
+            <strong>Source:</strong> {video_title}<br>
+            <strong>Link:</strong> <a href="{video_url}" target="_blank">{video_url}</a><br>
+            <strong>Confidence Score:</strong> {confidence:.2f}
+        </div>
+        """, unsafe_allow_html=True)
 
+def display_message(message):
+    """Display a chat message."""
+    role = message["role"]
+    
     if role == "user":
         with st.chat_message("user"):
-            st.write(content)
+            st.write(message["content"])
     else:
         with st.chat_message("assistant"):
-            # Check if this message has the new format with separate source_info
-            if "source_info" in message and message["source_info"]:
-                # Display main answer
-                st.write(content)
-                
-                # Parse and display source info
-                source_info = message["source_info"]
-                lines = source_info.split('\n')
-                video_title = ""
-                video_url = ""
-                confidence = ""
-                
-                for line in lines:
-                    if line.startswith("**Source:**"):
-                        video_title = line.replace("**Source:** ", "").strip()
-                    elif line.startswith("**Link:**"):
-                        video_url = line.replace("**Link:** ", "").strip()
-                    elif line.startswith("**Confidence Score:**"):
-                        confidence = line.replace("**Confidence Score:** ", "").strip()
-                
-                # Display with consistent formatting
-                if video_url and video_title:
-                    st.markdown(f"""
-                    <div class="source-info">
-                        <strong>Source:</strong> {video_title}<br>
-                        <strong>Link:</strong> <a href="{video_url}" target="_blank">{video_url}</a><br>
-                        <strong>Confidence Score:</strong> {confidence}
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            else:
-                # Handle old format - parse the entire content
-                if "**Source:**" in content:
-                    parts = content.split("**Source:**")
-                    answer = parts[0].strip()
-                    source_section = parts[1].strip() if len(parts) > 1 else ""
-                    
-                    # Display main answer
-                    st.write(answer)
-                    
-                    # Parse source section
-                    if source_section:
-                        lines = source_section.split('\n')
-                        video_title = ""
-                        video_url = ""
-                        confidence = ""
-                        
-                        for line in lines:
-                            line = line.strip()
-                            if line.startswith("**Link:**"):
-                                video_url = line.replace("**Link:** ", "").strip()
-                            elif line.startswith("**Confidence Score:**"):
-                                confidence = line.replace("**Confidence Score:** ", "").strip()
-                            elif line and not line.startswith("**"):
-                                # This is the video title (first non-** line)
-                                if not video_title:
-                                    video_title = line
-                        
-                        # Display with same formatting as new format
-                        if video_url and video_title:
-                            st.markdown(f"""
-                            <div class="source-info">
-                                <strong>Source:</strong> {video_title}<br>
-                                <strong>Link:</strong> <a href="{video_url}" target="_blank">{video_url}</a><br>
-                                <strong>Confidence Score:</strong> {confidence}
-                            </div>
-                            """, unsafe_allow_html=True)
-                else:
-                    # No source info, just display content
-                    st.write(content)
+            content = message["content"]
+            sources = message.get("sources", [])
+            display_response_with_source(content, sources)
+
+def generate_response(question):
+    """Generate response using RAG service and return structured data."""
+    if not st.session_state.rag_service:
+        return None
+    
+    try:
+        start_time = time.time()
+        rag_response = st.session_state.rag_service.generate_response(question)
+        end_time = time.time()
+        
+        # Extract just the answer text (without source formatting)
+        answer_text = rag_response.answer
+        if "**Source:**" in answer_text:
+            answer_text = answer_text.split("**Source:**")[0].strip()
+        
+        # Create clean message structure
+        message = {
+            "role": "assistant",
+            "content": answer_text,
+            "sources": rag_response.sources,
+            "confidence": rag_response.confidence_score,
+            "response_time": f"{end_time - start_time:.2f}s",
+            "timestamp": datetime.now().strftime("%H:%M:%S")
+        }
+        
+        return message
+        
+    except Exception as e:
+        return {
+            "role": "assistant",
+            "content": f"Error generating response: {str(e)}",
+            "sources": [],
+            "confidence": 0.0,
+            "timestamp": datetime.now().strftime("%H:%M:%S")
+        }
 
 def main():
     """Main application function."""
@@ -212,14 +179,11 @@ def main():
         st.header("System Status")
 
         # Configuration validation
-        config_valid = validate_config()
-
-        if config_valid:
-            st.success("Configuration valid")
-        else:
-            st.error("Configuration error")
-            st.info("Please check your environment variables and settings.")
+        if not validate_config():
+            st.error("Configuration error - Please check your API key")
             return
+
+        st.success("Configuration valid")
 
         # Initialize RAG service
         if not st.session_state.service_initialized:
@@ -234,7 +198,7 @@ def main():
         else:
             st.success("RAG Service ready")
 
-        # System info
+        # Session statistics
         st.subheader("Session Stats")
         st.metric("Conversations", st.session_state.conversation_count)
         st.metric("Messages", len(st.session_state.messages))
@@ -260,70 +224,40 @@ def main():
                 st.session_state.messages.append(user_message)
                 
                 # Generate response
-                if st.session_state.rag_service:
-                    try:
-                        start_time = time.time()
-                        response = st.session_state.rag_service.generate_response(question)
-                        end_time = time.time()
-                        
-                        # Parse response content
-                        if "**Source:**" in response.answer:
-                            parts = response.answer.split("**Source:**")
-                            main_answer = parts[0].strip()
-                            source_info = parts[1].strip() if len(parts) > 1 else ""
-                        else:
-                            main_answer = response.answer
-                            source_info = ""
-                        
-                        # Add response to messages
-                        assistant_message = {
-                            "role": "assistant",
-                            "content": main_answer,
-                            "source_info": source_info,
-                            "timestamp": datetime.now().strftime("%H:%M:%S"),
-                            "response_time": f"{end_time - start_time:.2f}s"
-                        }
-                        st.session_state.messages.append(assistant_message)
-                        st.session_state.conversation_count += 1
-                        
-                    except Exception as e:
-                        error_message = {
-                            "role": "assistant",
-                            "content": f"Error: {str(e)}",
-                            "source_info": "",
-                            "timestamp": datetime.now().strftime("%H:%M:%S")
-                        }
-                        st.session_state.messages.append(error_message)
+                response_message = generate_response(question)
+                if response_message:
+                    st.session_state.messages.append(response_message)
+                    st.session_state.conversation_count += 1
                 
                 st.rerun()
 
-        # Clear conversation
+        # Control buttons
         if st.button("Clear Conversation", use_container_width=True):
             st.session_state.messages = []
             st.session_state.conversation_count = 0
             st.rerun()
 
-        # Export conversation
-        if st.session_state.messages and st.button("Export Chat", use_container_width=True):
-            chat_export = []
-            for msg in st.session_state.messages:
-                chat_export.append(f"{msg['role'].upper()}: {msg['content']}\n")
-
-            export_text = "\n".join(chat_export)
-            st.download_button(
-                label="Download Chat History",
-                data=export_text,
-                file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                mime="text/plain"
-            )
+        # Export functionality
+        if st.session_state.messages:
+            if st.button("Export Chat", use_container_width=True):
+                chat_export = []
+                for msg in st.session_state.messages:
+                    chat_export.append(f"{msg['role'].upper()}: {msg['content']}")
+                
+                export_text = "\n\n".join(chat_export)
+                st.download_button(
+                    label="Download Chat History",
+                    data=export_text,
+                    file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain"
+                )
 
     # Main chat interface
     st.subheader("Chat Interface")
 
-    # Display chat messages
-    if "messages" in st.session_state:
-        for message in st.session_state.messages:
-            display_message(message)
+    # Display existing messages
+    for message in st.session_state.messages:
+        display_message(message)
 
     # Chat input
     if prompt := st.chat_input("Ask a question about leadership or business..."):
@@ -334,61 +268,36 @@ def main():
             "timestamp": datetime.now().strftime("%H:%M:%S")
         }
         st.session_state.messages.append(user_message)
-        display_message(user_message)
 
-        # Generate response
-        if st.session_state.rag_service:
-            try:
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        start_time = time.time()
-                        response = st.session_state.rag_service.generate_response(prompt)
-                        end_time = time.time()
+        # Display user message
+        with st.chat_message("user"):
+            st.write(prompt)
 
-                    # Parse response content
-                    if "**Source:**" in response.answer:
-                        parts = response.answer.split("**Source:**")
-                        main_answer = parts[0].strip()
-                        source_info = parts[1].strip() if len(parts) > 1 else ""
-                    else:
-                        main_answer = response.answer
-                        source_info = ""
+        # Generate and display response
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                response_message = generate_response(prompt)
 
-                    # Display response
-                    st.write(main_answer)
-                    
-                    if source_info:
-                        st.markdown(f"""
-                        <div class="source-info">
-                            <strong>Source:</strong> {source_info}
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                    # Add response to messages with parsed content
-                    assistant_message = {
-                        "role": "assistant",
-                        "content": main_answer,
-                        "source_info": source_info,
-                        "timestamp": datetime.now().strftime("%H:%M:%S"),
-                        "response_time": f"{end_time - start_time:.2f}s"
-                    }
-                    st.session_state.messages.append(assistant_message)
-                    st.session_state.conversation_count += 1
-
-                    # Show response time
-                    st.caption(f"Response time: {end_time - start_time:.2f}s")
-
-            except Exception as e:
-                st.error(f"Error generating response: {str(e)}")
-        else:
-            st.error("RAG service not available")
+            if response_message:
+                # Display response with source
+                display_response_with_source(
+                    response_message["content"], 
+                    response_message["sources"]
+                )
+                
+                # Add to message history
+                st.session_state.messages.append(response_message)
+                st.session_state.conversation_count += 1
+                
+                # Show response time
+                st.caption(f"Response time: {response_message['response_time']}")
 
     # Footer
     st.markdown("---")
     st.markdown(
         """
-        <div style="text-align: center; color: #666; padding: 1rem;">
-            <p>YouTube RAG Assistant | Built with Streamlit & LangChain</p>
+        <div style="text-align: center; color: #b0b0b0; padding: 1rem;">
+            <p><strong>YouTube RAG Assistant</strong> | Built with Streamlit & LangChain</p>
             <p>Powered by Google Gemini AI & Qdrant Vector Database</p>
         </div>
         """,
