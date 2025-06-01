@@ -36,61 +36,61 @@ st.markdown("""
    .main-header {
        font-size: 2.5rem;
        font-weight: bold;
-       color: #1f77b4;
+       color: #64b5f6;
        text-align: center;
        margin-bottom: 0.5rem;
    }
    .sub-header {
        font-size: 1.2rem;
-       color: #666;
+       color: #b0b0b0;
        text-align: center;
        margin-bottom: 2rem;
    }
    .source-info {
-       background-color: #f5f5f5;
+       background-color: #2d2d2d;
        padding: 0.8rem;
        border-radius: 0.5rem;
        margin-top: 0.5rem;
        font-size: 0.9rem;
-       border-left: 4px solid #28a745;
-       color: #333333;
+       border-left: 4px solid #4caf50;
+       color: #ffffff;
    }
    
    .stChatMessage {
-       background-color: #f9f9f9;
-       color: #333333;
+       background-color: #1e1e1e;
+       color: #ffffff;
        border-radius: 1rem;
        margin: 0.5rem 0;
    }
    
    .stChatMessage [data-testid="chatAvatarIcon-assistant"] {
-       background-color: #e8f5e8;
+       background-color: #2d4a2d;
    }
    
    .stChatMessage [data-testid="chatAvatarIcon-user"] {
-       background-color: #e3f2fd;
+       background-color: #1a3a5c;
    }
    
    .stChatMessage p, .stChatMessage div, .stChatMessage span {
-       color: #333333;
+       color: #ffffff;
    }
    
    .stChatMessage .stMarkdown {
-       color: #333333;
+       color: #ffffff;
    }
    
    .stChatMessage .stMarkdown p {
-       color: #333333;
+       color: #ffffff;
    }
    
    .source-info a {
-       color: #1f77b4;
+       color: #64b5f6;
        text-decoration: none;
        font-weight: bold;
    }
    
    .source-info a:hover {
-       color: #0056b3;
+       color: #90caf9;
        text-decoration: underline;
    }
 </style>
