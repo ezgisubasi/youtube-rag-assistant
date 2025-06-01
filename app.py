@@ -172,7 +172,7 @@ def main():
 
     # Header
     st.markdown('<h1 class="main-header">YouTube RAG Assistant</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">AI-powered leadership guidance from YouTube video content</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">AI-powered guidance from YouTube video content!</p>', unsafe_allow_html=True)
 
     # Sidebar
     with st.sidebar:
