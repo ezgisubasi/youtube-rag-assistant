@@ -44,7 +44,6 @@ st.markdown("""
         text-align: center;
         margin-bottom: 2rem;
     }
-            
     .chat-message {
         padding: 1rem;
         border-radius: 0.5rem;
@@ -128,10 +127,8 @@ def display_message(message: dict):
                 answer = parts[0].strip()
                 source_info = parts[1].strip() if len(parts) > 1 else ""
 
-                # Display main answer
                 st.write(answer)
 
-                # Display source info in a separate container
                 if source_info:
                     # Extract video title, URL and confidence
                     if "Confidence Score:" in source_info:
@@ -141,31 +138,15 @@ def display_message(message: dict):
 
                         try:
                             confidence = float(confidence_str)
-                            # Use a container to prevent color changes
-                            with st.container():
-                                st.markdown(f"""
-                                <div style="
-                                    background-color: #f8f9fa;
-                                    padding: 0.5rem;
-                                    border-radius: 0.3rem;
-                                    margin-top: 0.5rem;
-                                    font-size: 0.9rem;
-                                    border-left: 3px solid #28a745;
-                                ">
-                                    <strong>📹 Source:</strong> {video_info}<br>
-                                    <strong>🎯 Confidence:</strong> {confidence:.2f}
-                                </div>
-                                """, unsafe_allow_html=True)
+                            st.markdown(f"""
+                            <div class="source-info">
+                                <strong>📹 Source:</strong> {video_info}<br>
+                                <strong>🎯 Confidence:</strong> {format_confidence_score(confidence)}
+                            </div>
+                            """, unsafe_allow_html=True)
                         except:
                             st.markdown(f"""
-                            <div style="
-                                background-color: #f8f9fa;
-                                padding: 0.5rem;
-                                border-radius: 0.3rem;
-                                margin-top: 0.5rem;
-                                font-size: 0.9rem;
-                                border-left: 3px solid #6c757d;
-                            ">
+                            <div class="source-info">
                                 <strong>📹 Source:</strong> {video_info}
                             </div>
                             """, unsafe_allow_html=True)
@@ -212,52 +193,24 @@ def main():
         st.metric("Conversations", st.session_state.conversation_count)
         st.metric("Messages", len(st.session_state.messages))
 
-# Example questions
-st.subheader("💡 Example Questions")
-example_questions = [
-    "Nasıl iyi lider olunur?",
-    "Takım çalışması neden önemlidir?",
-    "Başarılı iş stratejileri nelerdir?",
-    "Liderlik becerileri nasıl geliştirilir?",
-    "İnovasyonun önemi nedir?"
-]
+        # Example questions
+        st.subheader("💡 Example Questions")
+        example_questions = [
+            "Nasıl iyi lider olunur?",
+            "Takım çalışması neden önemlidir?",
+            "Başarılı iş stratejileri nelerdir?",
+            "Liderlik becerileri nasıl geliştirilir?",
+            "İnovasyonun önemi nedir?"
+        ]
 
-for question in example_questions:
-    if st.button(question, key=f"example_{question}", use_container_width=True):
-        # Add user message
-        user_message = {
-            "role": "user",
-            "content": question,
-            "timestamp": datetime.now().strftime("%H:%M:%S")
-        }
-        st.session_state.messages.append(user_message)
-        
-        # Generate response immediately
-        if st.session_state.rag_service:
-            try:
-                start_time = time.time()
-                response = st.session_state.rag_service.generate_response(question)
-                end_time = time.time()
-                
-                # Add response to messages
-                assistant_message = {
-                    "role": "assistant",
-                    "content": response.answer,
-                    "timestamp": datetime.now().strftime("%H:%M:%S"),
-                    "response_time": f"{end_time - start_time:.2f}s"
-                }
-                st.session_state.messages.append(assistant_message)
-                st.session_state.conversation_count += 1
-                
-            except Exception as e:
-                error_message = {
-                    "role": "assistant",
-                    "content": f"Error: {str(e)}",
+        for question in example_questions:
+            if st.button(question, key=f"example_{question}", use_container_width=True):
+                st.session_state.messages.append({
+                    "role": "user",
+                    "content": question,
                     "timestamp": datetime.now().strftime("%H:%M:%S")
-                }
-                st.session_state.messages.append(error_message)
-        
-        st.rerun()
+                })
+                st.rerun()
 
         # Clear conversation
         if st.button("🗑️ Clear Conversation", use_container_width=True):
