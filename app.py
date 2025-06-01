@@ -119,7 +119,7 @@ def load_rag_service():
         return None, str(e)
 
 def display_message(message: dict):
-    """Display a chat message with clickable links."""
+    """Display a chat message with consistent formatting."""
     role = message["role"]
     content = message["content"]
 
@@ -128,14 +128,13 @@ def display_message(message: dict):
             st.write(content)
     else:
         with st.chat_message("assistant"):
+            # Check if this message has the new format with separate source_info
             if "source_info" in message and message["source_info"]:
                 # Display main answer
                 st.write(content)
                 
-                # Display source info with clickable links
+                # Parse and display source info
                 source_info = message["source_info"]
-                
-                # Parse the new format
                 lines = source_info.split('\n')
                 video_title = ""
                 video_url = ""
@@ -143,14 +142,14 @@ def display_message(message: dict):
                 
                 for line in lines:
                     if line.startswith("**Source:**"):
-                        video_title = line.replace("**Source:**", "").strip()
+                        video_title = line.replace("**Source:** ", "").strip()
                     elif line.startswith("**Link:**"):
-                        video_url = line.replace("**Link:**", "").strip()
+                        video_url = line.replace("**Link:** ", "").strip()
                     elif line.startswith("**Confidence Score:**"):
-                        confidence = line.replace("**Confidence Score:**", "").strip()
+                        confidence = line.replace("**Confidence Score:** ", "").strip()
                 
-                # Create formatted output with clickable link
-                if video_url:
+                # Display with consistent formatting
+                if video_url and video_title:
                     st.markdown(f"""
                     <div class="source-info">
                         <strong>Source:</strong> {video_title}<br>
@@ -158,39 +157,37 @@ def display_message(message: dict):
                         <strong>Confidence Score:</strong> {confidence}
                     </div>
                     """, unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div class="source-info">
-                        <strong>Source:</strong> {video_title}<br>
-                        <strong>Confidence Score:</strong> {confidence}
-                    </div>
-                    """, unsafe_allow_html=True)
             
             else:
-                # Handle old format messages
+                # Handle old format - parse the entire content
                 if "**Source:**" in content:
                     parts = content.split("**Source:**")
                     answer = parts[0].strip()
                     source_section = parts[1].strip() if len(parts) > 1 else ""
                     
+                    # Display main answer
                     st.write(answer)
                     
+                    # Parse source section
                     if source_section:
-                        # Parse old format and convert to new format
                         lines = source_section.split('\n')
                         video_title = ""
                         video_url = ""
                         confidence = ""
                         
                         for line in lines:
-                            if "**Link:**" in line:
-                                video_url = line.replace("**Link:**", "").strip()
-                            elif "**Confidence Score:**" in line:
-                                confidence = line.replace("**Confidence Score:**", "").strip()
+                            line = line.strip()
+                            if line.startswith("**Link:**"):
+                                video_url = line.replace("**Link:** ", "").strip()
+                            elif line.startswith("**Confidence Score:**"):
+                                confidence = line.replace("**Confidence Score:** ", "").strip()
                             elif line and not line.startswith("**"):
-                                video_title = line.strip()
+                                # This is the video title (first non-** line)
+                                if not video_title:
+                                    video_title = line
                         
-                        if video_url:
+                        # Display with same formatting as new format
+                        if video_url and video_title:
                             st.markdown(f"""
                             <div class="source-info">
                                 <strong>Source:</strong> {video_title}<br>
@@ -198,13 +195,8 @@ def display_message(message: dict):
                                 <strong>Confidence Score:</strong> {confidence}
                             </div>
                             """, unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"""
-                            <div class="source-info">
-                                <strong>Source:</strong> {source_section}
-                            </div>
-                            """, unsafe_allow_html=True)
                 else:
+                    # No source info, just display content
                     st.write(content)
 
 def main():
@@ -364,13 +356,29 @@ def main():
 
                     # Display response
                     st.write(main_answer)
-                    
+
                     if source_info:
-                        st.markdown(f"""
-                        <div class="source-info">
-                            <strong>Source:</strong> {source_info}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        lines = source_info.split('\n')
+                        video_title = ""
+                        video_url = ""
+                        confidence = ""
+                        
+                        for line in lines:
+                            if line.startswith("**Source:**"):
+                                video_title = line.replace("**Source:** ", "").strip()
+                            elif line.startswith("**Link:**"):
+                                video_url = line.replace("**Link:** ", "").strip()
+                            elif line.startswith("**Confidence Score:**"):
+                                confidence = line.replace("**Confidence Score:** ", "").strip()
+                        
+                        if video_url and video_title:
+                            st.markdown(f"""
+                            <div class="source-info">
+                                <strong>Source:</strong> {video_title}<br>
+                                <strong>Link:</strong> <a href="{video_url}" target="_blank">{video_url}</a><br>
+                                <strong>Confidence Score:</strong> {confidence}
+                            </div>
+                            """, unsafe_allow_html=True)
 
                     # Add response to messages with parsed content
                     assistant_message = {
