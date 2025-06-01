@@ -57,11 +57,19 @@ class RAGService:
         self.vector_service.initialize_vector_store()
         
         # Simple prompt template
-        self.answer_prompt = """Aşağıdaki video içeriğine dayanarak soruyu Türkçe yanıtla:
-
+        self.answer_prompt = """Sen bir YouTube video içeriklerine dayanan AI asistanısın. 
+        Görevin kullanıcıların sorularını video içeriklerinden yararlanarak yanıtlamak.
+        
+        Aşağıdaki video içeriğine dayanarak soruyu Türkçe yanıtla:
 Video İçeriği: {video_content}
 
 Soru: {question}
+
+Talimatlar:
+- Video içeriğindeki bilgileri kullanarak detaylı ve pratik bir yanıt ver
+- Profesyonel ama anlaşılır bir dil kullan
+- Yanıtını yapılandır: ana noktalar, açıklamalar ve öneriler
+- Mümkünse adım adım rehberlik sağla
 
 Yanıt:"""
         
