@@ -136,7 +136,9 @@ class VectorService:
             
             results = []
             for doc, score in docs_with_scores:
-                similarity_score = 1.0 / (1.0 + abs(score))
+                # similarity_score = 1.0 / (1.0 + abs(score))
+                similarity_score = max(0, 1 - (abs(score) / 2))
+
                 
                 result = SearchResult(
                     video_id=doc.metadata['video_id'],

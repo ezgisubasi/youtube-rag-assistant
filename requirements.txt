@@ -9,3 +9,4 @@ sentence-transformers
 pydantic
 PyYAML
 python-dotenv
+requests
