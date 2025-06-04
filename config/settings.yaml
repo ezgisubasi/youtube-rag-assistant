@@ -12,7 +12,8 @@ whisper_model: medium
 language: tr
 
 # Embedding Settings
-embedding_model: altaidevorg/bge-m3-distill-8l
+# embedding_model: altaidevorg/bge-m3-distill-8l
+embedding_model: BAAI/bge-m3 
 
 # Vector Database Settings
 vector_db_path: data/vector_db
