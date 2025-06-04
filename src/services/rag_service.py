@@ -25,7 +25,7 @@ class RAGConfig:
     api_key: str
     temperature: float = 0.7
     max_tokens: int = 1024
-    min_similarity_threshold: float = 0.4  # Reasonable threshold
+    min_similarity_threshold: float = 0.4  # Lowered back to reasonable threshold
     search_top_k: int = 5
 
 class RAGService:
