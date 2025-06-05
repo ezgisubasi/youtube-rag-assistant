@@ -27,8 +27,8 @@ class VectorConfig:
     collection_name: str
     transcripts_json: str
     retrieval_k: int
-    chunk_size: int = 1000
-    chunk_overlap: int = 200
+    chunk_size: int = 3000
+    chunk_overlap: int = 600
 
 class VectorService:
     """Colab-compatible vector service for YouTube RAG."""
