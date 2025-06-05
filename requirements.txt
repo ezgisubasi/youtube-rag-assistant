@@ -10,3 +10,4 @@ pydantic
 PyYAML
 python-dotenv
 requests
+huggingface_hub

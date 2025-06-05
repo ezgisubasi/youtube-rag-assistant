@@ -1,7 +1,8 @@
 # src/services/vector_service.py
-"""Vector service using LangChain and Qdrant."""
+"""Vector service using LangChain and Qdrant with HF token support."""
 
 import json
+import os
 from typing import List
 from pathlib import Path
 from dataclasses import dataclass
@@ -31,7 +32,7 @@ class VectorConfig:
     chunk_overlap: int = 200
 
 class VectorService:
-    """Professional vector service for YouTube RAG."""
+    """Vector service for YouTube RAG with HF token support."""
     
     def __init__(self):
         """Initialize vector service."""
@@ -45,9 +46,20 @@ class VectorService:
             retrieval_k=config.retrieval_k
         )
         
-        # Initialize embeddings
+        # Setup HF authentication
+        self._setup_hf_auth()
+        
+        # Initialize embeddings with HF token support
+        model_kwargs = {}
+        hf_token = os.getenv('HF_TOKEN')
+        if hf_token:
+            model_kwargs['use_auth_token'] = hf_token
+        if 'bge-m3' in self.config.embedding_model.lower():
+            model_kwargs['trust_remote_code'] = True
+        
         self.embeddings = HuggingFaceEmbeddings(
-            model_name=self.config.embedding_model
+            model_name=self.config.embedding_model,
+            model_kwargs=model_kwargs
         )
         
         # Initialize text splitter
@@ -58,6 +70,23 @@ class VectorService:
         
         self.vector_store = None
         self.qdrant_client = None
+        self.distance_metric = None
+    
+    def _setup_hf_auth(self):
+        """Setup Hugging Face authentication."""
+        hf_token = os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_HUB_TOKEN')
+        
+        # Try Colab secrets if no environment variable
+        if not hf_token:
+            try:
+                from google.colab import userdata
+                hf_token = userdata.get('HF_TOKEN')
+            except:
+                pass
+        
+        if hf_token:
+            os.environ['HF_TOKEN'] = hf_token
+            os.environ['HUGGINGFACE_HUB_TOKEN'] = hf_token
     
     def initialize_vector_store(self) -> bool:
         """Initialize vector store - use existing or create new."""
@@ -82,13 +111,22 @@ class VectorService:
                         collection_name=self.config.collection_name,
                         embeddings=self.embeddings
                     )
+                    
+                    # Get collection info to understand the distance metric
+                    collection_info = self.qdrant_client.get_collection(self.config.collection_name)
+                    self.distance_metric = collection_info.config.params.vectors.distance.name
+                    print(f"Loaded existing vector database with distance metric: {self.distance_metric}")
+                    
+                    # Test search
                     self.vector_store.similarity_search("test", k=1)
                     return True
                     
-            except Exception:
+            except Exception as e:
+                print(f"Error checking existing collection: {e}")
                 pass
             
             # Create new vector DB
+            print("Creating new vector database...")
             with open(self.config.transcripts_json, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
@@ -106,20 +144,29 @@ class VectorService:
                     documents.append(doc)
             
             if not documents:
+                print("No documents found with transcripts")
                 return False
             
             chunks = self.text_splitter.split_documents(documents)
+            print(f"Created {len(chunks)} text chunks from {len(documents)} videos")
             
             self.vector_store = Qdrant.from_documents(
                 documents=chunks,
                 embedding=self.embeddings,
                 client=self.qdrant_client,
-                collection_name=self.config.collection_name
+                collection_name=self.config.collection_name,
+                force_recreate=True
             )
+            
+            # Get the distance metric for the new collection
+            collection_info = self.qdrant_client.get_collection(self.config.collection_name)
+            self.distance_metric = collection_info.config.params.vectors.distance.name
+            print(f"Vector database created successfully with distance metric: {self.distance_metric}")
             
             return True
             
-        except Exception:
+        except Exception as e:
+            print(f"Error initializing vector store: {e}")
             return False
     
     def search(self, query: str, top_k: int = None) -> List[SearchResult]:
@@ -136,9 +183,8 @@ class VectorService:
             
             results = []
             for doc, score in docs_with_scores:
-                # similarity_score = 1.0 / (1.0 + abs(score))
+                # Convert distance to similarity (cosine distance)
                 similarity_score = max(0, 1 - (abs(score) / 2))
-
                 
                 result = SearchResult(
                     video_id=doc.metadata['video_id'],
