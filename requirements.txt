@@ -2,7 +2,7 @@ streamlit
 google-generativeai
 langchain
 langchain-google-genai
-langchain-community
+langchain-huggingface
 langchain-qdrant
 qdrant-client
 sentence-transformers
