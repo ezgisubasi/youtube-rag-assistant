@@ -32,7 +32,7 @@ class VectorConfig:
     chunk_overlap: int = 200
 
 class VectorService:
-    """Vector service for YouTube RAG with HF token support."""
+    """Professional vector service for YouTube RAG with HF token support."""
     
     def __init__(self):
         """Initialize vector service."""
@@ -46,23 +46,7 @@ class VectorService:
             retrieval_k=config.retrieval_k
         )
         
-        # Setup HF authentication
-        self._setup_hf_auth()
-        
-        # Initialize embeddings with HF token support
-        model_kwargs = {}
-        hf_token = os.getenv('HF_TOKEN')
-        if hf_token:
-            model_kwargs['use_auth_token'] = hf_token
-        if 'bge-m3' in self.config.embedding_model.lower():
-            model_kwargs['trust_remote_code'] = True
-        
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name=self.config.embedding_model,
-            model_kwargs=model_kwargs
-        )
-        
-        # Initialize text splitter
+        self.embeddings = None
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.config.chunk_size,
             chunk_overlap=self.config.chunk_overlap
@@ -88,6 +72,27 @@ class VectorService:
             os.environ['HF_TOKEN'] = hf_token
             os.environ['HUGGINGFACE_HUB_TOKEN'] = hf_token
     
+    def _create_embeddings(self):
+        """Create embeddings model with HF token support."""
+        if self.embeddings is not None:
+            return
+        
+        # Setup HF authentication only when needed
+        self._setup_hf_auth()
+        
+        # Initialize embeddings with HF token support
+        model_kwargs = {}
+        hf_token = os.getenv('HF_TOKEN')
+        if hf_token:
+            model_kwargs['use_auth_token'] = hf_token
+        if 'bge-m3' in self.config.embedding_model.lower():
+            model_kwargs['trust_remote_code'] = True
+        
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name=self.config.embedding_model,
+            model_kwargs=model_kwargs
+        )
+    
     def initialize_vector_store(self) -> bool:
         """Initialize vector store - use existing or create new."""
         try:
@@ -105,6 +110,9 @@ class VectorService:
                 collection_names = [col.name for col in collections.collections]
                 
                 if self.config.collection_name in collection_names:
+                    # Create embeddings only for existing vector store
+                    self._create_embeddings()
+                    
                     # Use existing vector DB
                     self.vector_store = Qdrant(
                         client=self.qdrant_client,
@@ -125,8 +133,10 @@ class VectorService:
                 print(f"Error checking existing collection: {e}")
                 pass
             
-            # Create new vector DB
+            # Create new vector DB - need embeddings model
             print("Creating new vector database...")
+            self._create_embeddings()
+            
             with open(self.config.transcripts_json, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
@@ -183,7 +193,7 @@ class VectorService:
             
             results = []
             for doc, score in docs_with_scores:
-                # Convert distance to similarity (cosine distance)
+                # Convert distance to similarity (assuming cosine distance)
                 similarity_score = max(0, 1 - (abs(score) / 2))
                 
                 result = SearchResult(
