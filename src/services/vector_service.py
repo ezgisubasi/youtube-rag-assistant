@@ -144,7 +144,7 @@ class VectorService:
     def search(self, query: str, top_k: int = None) -> List[SearchResult]:
         """Search for relevant content."""
         if not self.vector_store:
-            return []
+            self.initialize_vector_store()
         
         try:
             k = top_k or self.config.retrieval_k
