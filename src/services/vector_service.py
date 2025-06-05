@@ -78,12 +78,12 @@ class VectorService:
             with open(self.config.transcripts_json, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            # Create documents from WHOLE transcripts (no chunking)
+            # Create documents from transcripts (no chunking)
             documents = []
             for item in data:
                 transcript = item.get('video_text', '').strip()
                 if transcript:
-                    # Each complete transcript becomes ONE document
+                    # Each complete transcript becomes one document
                     doc = Document(
                         page_content=transcript,
                         metadata={
@@ -97,7 +97,7 @@ class VectorService:
             if not documents:
                 return False
             
-            # Create vector store with whole transcripts
+            # Create vector store with transcripts
             self.vector_store = Qdrant.from_documents(
                 documents=documents,
                 embedding=self.embeddings,
