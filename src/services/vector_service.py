@@ -31,7 +31,7 @@ class VectorConfig:
     chunk_overlap: int = 600
 
 class VectorService:
-    """Colab-compatible vector service for YouTube RAG."""
+    """Vector service for YouTube RAG."""
     
     def __init__(self):
         """Initialize vector service."""
@@ -59,7 +59,7 @@ class VectorService:
         self.vector_store = None
     
     def initialize_vector_store(self) -> bool:
-        """Initialize vector store - Colab compatible version."""
+        """Initialize vector store"""
         try:
             # Setup path
             vector_db_path = Path(self.config.vector_db_path)
@@ -109,7 +109,7 @@ class VectorService:
             # Split into chunks
             chunks = self.text_splitter.split_documents(documents)
             
-            # Create vector store - COLAB COMPATIBLE METHOD
+            # Create vector store 
             self.vector_store = Qdrant.from_documents(
                 documents=chunks,
                 embedding=self.embeddings,
@@ -139,7 +139,9 @@ class VectorService:
             results = []
             for doc, score in docs_with_scores:
                 # Convert distance to similarity
-                similarity_score = 1.0 / (1.0 + abs(score))
+                # CORRECT: True mathematical conversion
+                cosine_similarity = 1.0 - score # Distance to similarity
+                similarity_score = (cosine_similarity + 1.0) / 2.0  # To 0-1 range
                 
                 result = SearchResult(
                     video_id=doc.metadata['video_id'],
