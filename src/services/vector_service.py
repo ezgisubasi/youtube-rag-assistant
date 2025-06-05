@@ -139,14 +139,14 @@ class VectorService:
             results = []
             for doc, score in docs_with_scores:
                 # Convert distance to similarity
-                #similarity_score = 1.0 / (1.0 + abs(score))
+                similarity_score = 1.0 / (1.0 + abs(score))
                 
                 result = SearchResult(
                     video_id=doc.metadata['video_id'],
                     video_title=doc.metadata['video_title'],
                     video_url=doc.metadata['video_url'],
                     text_content=doc.page_content,
-                    similarity_score=score
+                    similarity_score=similarity_score
                 )
                 results.append(result)
             
