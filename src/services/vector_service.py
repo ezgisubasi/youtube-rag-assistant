@@ -10,7 +10,7 @@ import sys
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_qdrant import Qdrant
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
 
 # Add src to path for imports
