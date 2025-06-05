@@ -1,5 +1,5 @@
 # src/services/vector_service.py
-"""Vector service using LangChain and Qdrant."""
+"""Vector service using Qdrant and HuggingFace Embeddings based on transcripts."""
 
 import json
 import shutil
@@ -8,9 +8,8 @@ from pathlib import Path
 from dataclasses import dataclass
 import sys
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_qdrant import Qdrant
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
 
 # Add src to path for imports
@@ -21,17 +20,15 @@ from core.config import get_config
 
 @dataclass
 class VectorConfig:
-    """Vector service configuration."""
+    """Vector service configuration for whole transcript processing."""
     embedding_model: str
     vector_db_path: str
     collection_name: str
     transcripts_json: str
     retrieval_k: int
-    chunk_size: int = 3000
-    chunk_overlap: int = 600
 
 class VectorService:
-    """Vector service for YouTube RAG."""
+    """Vector service initialized with transcripts."""
     
     def __init__(self):
         """Initialize vector service."""
@@ -50,24 +47,18 @@ class VectorService:
             model_name=self.config.embedding_model
         )
         
-        # Initialize text splitter
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.config.chunk_size,
-            chunk_overlap=self.config.chunk_overlap
-        )
-        
+        # No text splitter - use transcripts for complete context
         self.vector_store = None
     
     def initialize_vector_store(self) -> bool:
-        """Initialize vector store"""
+        """Initialize vector store using transcripts as documents."""
         try:
             # Setup path
             vector_db_path = Path(self.config.vector_db_path)
             vector_db_path.mkdir(parents=True, exist_ok=True)
             
-            # Check if collection already exists using direct path check
+            # Check if collection already exists
             if vector_db_path.exists() and any(vector_db_path.iterdir()):
-                # Try to load existing collection
                 try:
                     self.vector_store = Qdrant(
                         path=str(vector_db_path),
@@ -82,19 +73,21 @@ class VectorService:
                     shutil.rmtree(vector_db_path)
                     vector_db_path.mkdir(parents=True, exist_ok=True)
             
-            # Create new vector store
+            # Create new vector store from whole transcripts
             if not Path(self.config.transcripts_json).exists():
                 return False
             
             with open(self.config.transcripts_json, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            # Create documents
+            # Create documents from WHOLE transcripts (no chunking)
             documents = []
             for item in data:
-                if item.get('video_text', '').strip():
+                transcript = item.get('video_text', '').strip()
+                if transcript:
+                    # Each complete transcript becomes ONE document
                     doc = Document(
-                        page_content=item['video_text'],
+                        page_content=transcript,
                         metadata={
                             'video_id': item['video_id'],
                             'video_title': item['video_title'],
@@ -106,14 +99,11 @@ class VectorService:
             if not documents:
                 return False
             
-            # Split into chunks
-            chunks = self.text_splitter.split_documents(documents)
-            
-            # Create vector store 
+            # Create vector store with whole transcripts
             self.vector_store = Qdrant.from_documents(
-                documents=chunks,
+                documents=documents,
                 embedding=self.embeddings,
-                path=str(vector_db_path),  # Use path, not client
+                path=str(vector_db_path),
                 collection_name=self.config.collection_name
             )
             
@@ -123,32 +113,27 @@ class VectorService:
             return False
     
     def search(self, query: str, top_k: int = None) -> List[SearchResult]:
-        """Search for relevant content."""
+        """Search with similarity scores as-is from Qdrant."""
         if not self.vector_store:
-            self.initialize_vector_store()
+            return []
         
         try:
             k = top_k or self.config.retrieval_k
             
-            # Get results with scores
+            # Get results with similarity scores from Qdrant
             docs_with_scores = self.vector_store.similarity_search_with_score(
                 query=query, k=k
             )
             
-            # Convert to SearchResult objects
             results = []
-            for doc, score in docs_with_scores:
-                # Convert distance to similarity
-                # CORRECT: True mathematical conversion
-                cosine_similarity = 1.0 - score # Distance to similarity
-                similarity_score = (cosine_similarity + 1.0) / 2.0  # To 0-1 range
-                
+            for doc, similarity_score in docs_with_scores:
+                # Use similarity score as-is (already in 0-1 range)
                 result = SearchResult(
                     video_id=doc.metadata['video_id'],
                     video_title=doc.metadata['video_title'],
                     video_url=doc.metadata['video_url'],
-                    text_content=doc.page_content,
-                    similarity_score=similarity_score
+                    text_content=doc.page_content,  # Complete transcript
+                    similarity_score=similarity_score  # Keep as-is
                 )
                 results.append(result)
             
