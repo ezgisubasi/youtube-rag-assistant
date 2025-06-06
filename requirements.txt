@@ -5,3 +5,4 @@ langchain-google-genai
 pydantic
 PyYAML
 python-dotenv
+langchain_qdrant
