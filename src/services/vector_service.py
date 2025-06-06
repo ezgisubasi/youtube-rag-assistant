@@ -53,10 +53,29 @@ class VectorService:
     def initialize_vector_store(self) -> bool:
         """Initialize vector store using transcripts as documents."""
         try:
+            # ADD DEBUGGING HERE:
+            import os
+            print(f"🔍 Current working directory: {os.getcwd()}")
+            print(f"🔍 Vector DB path: {self.config.vector_db_path}")
+            print(f"🔍 Transcripts JSON: {self.config.transcripts_json}")
+        
             # Setup path
             vector_db_path = Path(self.config.vector_db_path)
+            transcripts_path = Path(self.config.transcripts_json)
+        
+            print(f"🔍 Vector DB exists: {vector_db_path.exists()}")
+            print(f"🔍 Transcripts exists: {transcripts_path.exists()}")
+        
+            if transcripts_path.exists():
+                print(f"🔍 Transcripts file size: {transcripts_path.stat().st_size} bytes")
+        
+            # List what's actually in the directory
+            print(f"🔍 Files in current dir: {list(Path('.').iterdir())}")
+            if Path('data').exists():
+                print(f"🔍 Files in data/: {list(Path('data').iterdir())}")
+        
             vector_db_path.mkdir(parents=True, exist_ok=True)
-            
+
             # Check if collection already exists
             if vector_db_path.exists() and any(vector_db_path.iterdir()):
                 try:
