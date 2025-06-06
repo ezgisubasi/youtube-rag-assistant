@@ -1,5 +1,8 @@
 # src/services/rag_service.py
-"""RAG Service with improved language detection and dynamic confidence scoring."""
+"""
+Professional RAG Service with LLM-based confidence evaluation.
+Production-ready implementation for portfolio demonstration.
+"""
 
 from typing import List, Optional
 from dataclasses import dataclass
@@ -21,18 +24,32 @@ from services.web_search_service import WebSearchService
 
 @dataclass
 class RAGConfig:
+    """RAG service configuration."""
     model_name: str
     api_key: str
     temperature: float = 0.7
     max_tokens: int = 1024
-    min_similarity_threshold: float = 0.4  # Lowered back to reasonable threshold
+    min_similarity_threshold: float = 0.3
     search_top_k: int = 5
+    # LLM confidence thresholds
+    high_confidence_threshold: float = 0.75
+    medium_confidence_threshold: float = 0.50
 
 class RAGService:
-    """RAG service with web search fallback and improved language detection."""
+    """
+    Professional RAG service with LLM-based confidence evaluation.
+    
+    Features:
+    - Vector-based semantic search
+    - LLM confidence scoring
+    - Intelligent web search fallback
+    - Language matching validation
+    - Professional error handling
+    """
     
     def __init__(self):
-        print("Initializing RAG Service with Web Fallback...")
+        """Initialize RAG service with all components."""
+        print("Initializing RAG Service with LLM Confidence...")
         
         # Load configuration
         config = get_config()
@@ -61,7 +78,7 @@ class RAGService:
         self.vector_service.initialize_vector_store()
         self.web_search_service = WebSearchService()
         
-        # Prompt templates with proper language handling
+        # Prompt templates for response generation
         self.prompts = {
             'turkish': {
                 'youtube': """Sen, yalnızca aşağıdaki içerikten yola çıkarak, kullanıcının sorusunu Türkçe ve profesyonel bir dille yanıtlayan bir yapay zekâ asistansın.
@@ -137,14 +154,14 @@ Answer:"""
             }
         }
         
-        print("RAG Service with Web Fallback initialized successfully")
+        print("RAG Service initialized successfully")
     
     def detect_language(self, text: str) -> str:
-        """Enhanced language detection for Turkish vs English."""
+        """Detect if text is Turkish or English."""
         # Turkish-specific characters
         turkish_chars = set('çğıöşüÇĞIİÖŞÜ')
         
-        # Common Turkish words (expanded list)
+        # Turkish language indicators
         turkish_words = {
             'nedir', 'nasıl', 'neden', 'hangi', 'kimse', 'hiç', 'için', 'olan',
             'bu', 'bir', 'de', 'da', 'ile', 've', 'veya', 'ama', 'fakat',
@@ -159,25 +176,6 @@ Answer:"""
             'merhaba', 'günaydın', 'iyi günler', 'teşekkür', 'lütfen'
         }
         
-        # Common English words
-        english_words = {
-            'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have',
-            'i', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you',
-            'do', 'at', 'this', 'but', 'his', 'by', 'from', 'they',
-            'we', 'say', 'her', 'she', 'or', 'an', 'will', 'my', 'one',
-            'all', 'would', 'there', 'their', 'what', 'so', 'up', 'out',
-            'if', 'about', 'who', 'get', 'which', 'go', 'me', 'when',
-            'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know',
-            'take', 'people', 'into', 'year', 'your', 'good', 'some',
-            'could', 'them', 'see', 'other', 'than', 'then', 'now',
-            'look', 'only', 'come', 'its', 'over', 'think', 'also',
-            'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first',
-            'well', 'way', 'even', 'new', 'want', 'because', 'any',
-            'these', 'give', 'day', 'most', 'us', 'is', 'are', 'been',
-            'has', 'had', 'were', 'was', 'latest', 'best', 'top', 'why',
-            'where', 'what', 'when', 'how', 'hello', 'hi', 'thanks'
-        }
-        
         text_lower = text.lower()
         words = re.findall(r'\b\w+\b', text_lower)
         
@@ -185,105 +183,109 @@ Answer:"""
         if any(char in text for char in turkish_chars):
             return 'turkish'
         
-        # Count language indicators
+        # Count Turkish words and suffixes
         turkish_score = 0
-        english_score = 0
-        
         for word in words:
             if word in turkish_words:
-                turkish_score += 2  # Give more weight to exact matches
-            elif word in english_words:
-                english_score += 2
-            # Check for Turkish suffixes
+                turkish_score += 2
             elif any(word.endswith(suffix) for suffix in ['ler', 'lar', 'dir', 'dır', 'miş', 'muş', 'lik', 'lık']):
                 turkish_score += 1
         
-        # Check for question patterns
+        # Check for Turkish question patterns
         if re.search(r'\b(nasıl|neden|ne|nedir|hangi|kim|nerede|ne zaman)\b', text_lower):
             turkish_score += 3
-        if re.search(r'\b(what|why|how|which|who|where|when)\b', text_lower):
-            english_score += 3
         
-        # Make decision
-        if turkish_score > english_score:
-            return 'turkish'
-        elif english_score > turkish_score:
-            return 'english'
-        else:
-            # Default to English for ambiguous cases
-            return 'english'
+        return 'turkish' if turkish_score > 0 else 'english'
+    
+    def evaluate_response_quality(self, query: str, response: str, language: str) -> float:
+        """Evaluate response quality using LLM."""
+        try:
+            if language == 'turkish':
+                eval_prompt = f"""Bu RAG yanıtının kalitesini değerlendir:
+
+Sorgu: {query}
+Yanıt: {response}
+
+Bu yanıt kullanıcının sorusunu ne kadar iyi yanıtlıyor? Alakalı, doğru, tam ve anlaşılır mı?
+
+0.0 (çok kötü) ile 1.0 (mükemmel) arasında bir puan ver.
+
+Sadece sayı ver:"""
+            else:
+                eval_prompt = f"""Evaluate the quality of this RAG response:
+
+Query: {query}
+Response: {response}
+
+How well does this response answer the user's question? Consider relevance, accuracy, completeness, and clarity.
+
+Rate from 0.0 (very poor) to 1.0 (excellent).
+
+Return only the number:"""
+            
+            eval_response = self.llm.invoke(eval_prompt)
+            confidence_text = eval_response.content.strip()
+            
+            # Extract confidence score
+            numbers = re.findall(r'0\.\d+|1\.0|0\.0', confidence_text)
+            if numbers:
+                confidence = float(numbers[0])
+                return max(0.0, min(1.0, confidence))
+            
+            return 0.5  # Fallback
+            
+        except Exception as e:
+            print(f"Error evaluating response quality: {e}")
+            return 0.5
     
     def generate_response(self, query: str) -> RAGResponse:
-        """Generate response with proper language handling."""
+        """
+        Generate response using RAG with LLM confidence evaluation.
+        
+        Flow:
+        1. Vector search for relevant content
+        2. Language compatibility check
+        3. Generate RAG response
+        4. Evaluate response quality with LLM
+        5. Return high-quality response or fallback to web search
+        """
         try:
-            print(f"\nProcessing query: {query}")
+            # Detect query language
+            query_language = self.detect_language(query)
             
-            # Detect language
-            language = self.detect_language(query)
-            print(f"Detected language: {language}")
-            
-            # Step 1: Try YouTube first
+            # Get best YouTube content
             youtube_result = self._get_youtube_content(query)
             
-            # Step 2: Check if YouTube result is good enough
-            if youtube_result and youtube_result.similarity_score >= self.config.min_similarity_threshold:
-                print(f"Using YouTube (confidence: {youtube_result.similarity_score:.3f})")
-                answer = self._generate_youtube_answer(query, youtube_result, language)
-                
+            if not youtube_result:
+                return self._web_search_fallback(query, query_language)
+            
+            # Check language compatibility
+            content_language = self.detect_language(youtube_result.text_content[:500])
+            if query_language != content_language:
+                return self._web_search_fallback(query, query_language)
+            
+            # Check similarity threshold
+            if youtube_result.similarity_score < self.config.min_similarity_threshold:
+                return self._web_search_fallback(query, query_language)
+            
+            # Generate RAG response
+            rag_answer = self._generate_youtube_answer(query, youtube_result, query_language)
+            
+            # Evaluate response quality using LLM
+            llm_confidence = self.evaluate_response_quality(query, rag_answer, query_language)
+            
+            # Decision based on LLM confidence
+            if llm_confidence >= self.config.medium_confidence_threshold:
+                # High or medium confidence - use RAG response
                 return RAGResponse(
                     query=query,
-                    answer=answer,
+                    answer=rag_answer,
                     sources=[youtube_result],
-                    confidence_score=youtube_result.similarity_score
+                    confidence_score=llm_confidence
                 )
-            
-            # Step 3: Fallback to web search
-            if youtube_result:
-                print(f"YouTube confidence too low ({youtube_result.similarity_score:.3f} < {self.config.min_similarity_threshold}), using web search")
             else:
-                print("No YouTube results found, using web search")
-                
-            web_result = self._get_web_content(query)
-            
-            if web_result:
-                answer = self._generate_web_answer(query, web_result.snippet, language)
-                
-                # Simple confidence for web results
-                # Higher confidence if we got a real URL, lower if it's a search page
-                if "google.com/search" in web_result.url or "duckduckgo.com" in web_result.url:
-                    confidence = 0.3  # Low confidence for search pages
-                else:
-                    confidence = 0.7  # Good confidence for actual articles
-                
-                # Convert web result to SearchResult format
-                web_search_result = SearchResult(
-                    video_id="web_search",
-                    video_title=web_result.title,
-                    video_url=web_result.url,
-                    text_content=web_result.snippet,
-                    similarity_score=confidence
-                )
-                
-                return RAGResponse(
-                    query=query,
-                    answer=answer,
-                    sources=[web_search_result],
-                    confidence_score=confidence
-                )
-            
-            # Step 4: No content found anywhere
-            no_content_message = (
-                "Bu soruya yanıt verebilmek için hem video arşivimde hem de web'de yeterli bilgi bulunamadı." 
-                if language == 'turkish' 
-                else "Insufficient information found in both video archive and web search to answer this question."
-            )
-            
-            return RAGResponse(
-                query=query,
-                answer=no_content_message,
-                sources=[],
-                confidence_score=0.0
-            )
+                # Low confidence - fallback to web search
+                return self._web_search_fallback(query, query_language)
             
         except Exception as e:
             print(f"Error generating response: {e}")
@@ -301,34 +303,21 @@ Answer:"""
             )
     
     def _get_youtube_content(self, query: str) -> Optional[SearchResult]:
-        """Get best YouTube content."""
+        """Get best YouTube content from vector search."""
         try:
             search_results = self.vector_service.search(query, top_k=self.config.search_top_k)
-            if search_results:
-                best = search_results[0]
-                print(f"YouTube result: {best.video_title} (confidence: {best.similarity_score:.3f})")
-                return best
-            return None
+            return search_results[0] if search_results else None
         except Exception as e:
             print(f"YouTube search error: {e}")
             return None
     
-    def _get_web_content(self, query: str):
-        """Get web search content."""
-        try:
-            return self.web_search_service.search(query)
-        except Exception as e:
-            print(f"Web search error: {e}")
-            return None
-    
     def _generate_youtube_answer(self, question: str, video: SearchResult, language: str) -> str:
-        """Generate answer from YouTube content in the detected language."""
+        """Generate answer from YouTube content."""
         try:
             prompt = self.prompts[language]['youtube'].format(
                 video_content=video.text_content,
                 question=question
             )
-            
             response = self.llm.invoke(prompt)
             return response.content.strip()
         except Exception as e:
@@ -340,13 +329,12 @@ Answer:"""
             )
     
     def _generate_web_answer(self, question: str, web_content: str, language: str) -> str:
-        """Generate answer from web content in the detected language."""
+        """Generate answer from web content."""
         try:
             prompt = self.prompts[language]['web'].format(
                 web_content=web_content,
                 question=question
             )
-            
             response = self.llm.invoke(prompt)
             return response.content.strip()
         except Exception as e:
@@ -355,4 +343,53 @@ Answer:"""
                 "Web içeriği işlenirken hata oluştu." 
                 if language == 'turkish' 
                 else "Error processing web content."
+            )
+    
+    def _web_search_fallback(self, query: str, language: str) -> RAGResponse:
+        """Fallback to web search when RAG confidence is low."""
+        try:
+            web_result = self.web_search_service.search(query)
+            
+            if web_result:
+                web_answer = self._generate_web_answer(query, web_result.snippet, language)
+                
+                # Evaluate web response quality too
+                web_confidence = self.evaluate_response_quality(query, web_answer, language)
+                
+                web_search_result = SearchResult(
+                    video_id="web_search",
+                    video_title=web_result.title,
+                    video_url=web_result.url,
+                    text_content=web_result.snippet,
+                    similarity_score=web_confidence
+                )
+                
+                return RAGResponse(
+                    query=query,
+                    answer=web_answer,
+                    sources=[web_search_result],
+                    confidence_score=web_confidence
+                )
+            
+            # No content found anywhere
+            no_content_message = (
+                "Bu soruya yanıt verebilmek için hem video arşivimde hem de web'de yeterli bilgi bulunamadı." 
+                if language == 'turkish' 
+                else "Insufficient information found in both video archive and web search."
+            )
+            
+            return RAGResponse(
+                query=query,
+                answer=no_content_message,
+                sources=[],
+                confidence_score=0.0
+            )
+            
+        except Exception as e:
+            print(f"Web search fallback error: {e}")
+            return RAGResponse(
+                query=query,
+                answer=f"Web search failed: {str(e)}",
+                sources=[],
+                confidence_score=0.0
             )
