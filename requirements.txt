@@ -2,11 +2,6 @@ streamlit
 google-generativeai
 langchain
 langchain-google-genai
-langchain-huggingface
-langchain-qdrant
-qdrant-client
-sentence-transformers
 pydantic
 PyYAML
 python-dotenv
-requests
