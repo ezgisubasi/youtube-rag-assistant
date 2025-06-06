@@ -237,6 +237,28 @@ def main():
             st.session_state.conversation_count = 0
             st.rerun()
 
+        # ADD THIS DEBUG SECTION HERE:
+        st.subheader("🔍 Debug")
+        if st.button("Debug RAG System", use_container_width=True):
+            if st.session_state.rag_service:
+                try:
+                    # Test vector search
+                    test_results = st.session_state.rag_service.vector_service.search("test", top_k=1)
+                    st.write(f"Vector DB has {len(test_results)} documents")
+                    
+                    # Test web search
+                    web_result = st.session_state.rag_service.web_search_service.search("test")
+                    st.write(f"Web search working: {web_result is not None}")
+                    
+                    # Test simple response
+                    response = st.session_state.rag_service.generate_response("Hello")
+                    st.write(f"Response: {response.answer[:100]}...")
+                    
+                except Exception as e:
+                    st.error(f"Debug error: {e}")
+            else:
+                st.error("RAG service not initialized")
+
         # Export functionality
         if st.session_state.messages:
             if st.button("Export Chat", use_container_width=True):
