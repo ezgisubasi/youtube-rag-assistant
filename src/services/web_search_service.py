@@ -1,12 +1,12 @@
 # src/services/web_search_service.py
-"""Simple web search service using DuckDuckGo search."""
+"""Web search service using DuckDuckGo search - returns only the top result."""
 
 from typing import Optional
 from dataclasses import dataclass
 import sys
 from pathlib import Path
 import requests
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 import re
 
 # Add src to path for imports
@@ -20,28 +20,26 @@ class WebSearchResult:
     snippet: str
 
 class WebSearchService:
-    """Simple web search service using DuckDuckGo lite."""
+    """Simple web search service - returns only the top result."""
 
     def __init__(self):
         """Initialize web search service."""
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         print("Web Search Service initialized")
 
     def search(self, query: str) -> Optional[WebSearchResult]:
-        """Search web and return the best result with title, link, and snippet."""
+        """Search web and return the top result only."""
         try:
             print(f"Searching web for: {query}")
             
-            # Search using DuckDuckGo lite
-            result = self._search_ddg_lite(query)
-            
+            # Try DuckDuckGo HTML search for the top result
+            result = self._search_ddg_html(query)
             if result:
-                print(f"Found result: {result.title}")
+                print(f"Found top result: {result.title}")
                 return result
             
-            # If no results, return None instead of fallback
             print("No search results found")
             return None
             
@@ -49,11 +47,10 @@ class WebSearchService:
             print(f"Web search error: {e}")
             return None
 
-    def _search_ddg_lite(self, query: str) -> Optional[WebSearchResult]:
-        """Search using DuckDuckGo lite HTML interface."""
+    def _search_ddg_html(self, query: str) -> Optional[WebSearchResult]:
+        """Search using DuckDuckGo and return the first valid result."""
         try:
-            # Use DuckDuckGo lite interface
-            url = "https://lite.duckduckgo.com/lite/"
+            url = "https://duckduckgo.com/html/"
             params = {'q': query}
             
             response = requests.get(url, params=params, headers=self.headers, timeout=10)
@@ -61,22 +58,23 @@ class WebSearchService:
             if response.status_code == 200:
                 html = response.text
                 
-                # Find the first good result
-                # Pattern for DuckDuckGo lite: look for table rows with links
-                pattern = r'<td[^>]*><a[^>]*href="(https?://[^"]+)"[^>]*>([^<]+)</a></td>\s*<td[^>]*>([^<]+)</td>'
-                matches = re.findall(pattern, html, re.DOTALL)
+                # Pattern to find the first result with title, URL, and snippet
+                pattern = r'<h2[^>]*class="[^"]*result[^"]*"[^>]*>.*?<a[^>]*href="([^"]+)"[^>]*>([^<]+)</a>.*?</h2>.*?<span[^>]*class="[^"]*result-snippet[^"]*"[^>]*>([^<]+)</span>'
                 
-                # Get the first valid result
-                for url_found, title, snippet in matches:
-                    # Clean up the data
+                match = re.search(pattern, html, re.DOTALL | re.IGNORECASE)
+                
+                if match:
+                    url_found, title, snippet = match.groups()
+                    
+                    # Clean the data
+                    url_found = self._clean_url(url_found)
                     title = self._clean_text(title)
                     snippet = self._clean_text(snippet)
-                    url_found = url_found.strip()
                     
-                    # Validate the result
-                    if (len(title) > 10 and 
-                        len(snippet) > 20 and 
-                        self._is_valid_url(url_found)):
+                    # Validate and return the first good result
+                    if (self._is_valid_url(url_found) and 
+                        len(title) > 3 and 
+                        len(snippet) > 5):
                         
                         return WebSearchResult(
                             title=title,
@@ -89,7 +87,30 @@ class WebSearchService:
         except Exception as e:
             print(f"DuckDuckGo search error: {e}")
             return None
-    
+
+    def _clean_url(self, url: str) -> str:
+        """Clean URL from DuckDuckGo redirects."""
+        if not url:
+            return ""
+        
+        # Handle DuckDuckGo redirects
+        if '/l/?uddg=' in url:
+            try:
+                decoded = unquote(url)
+                match = re.search(r'https?://[^&\s]+', decoded)
+                if match:
+                    return match.group(0)
+            except:
+                pass
+        
+        # Fix relative URLs
+        if url.startswith('//'):
+            url = 'https:' + url
+        elif url.startswith('/'):
+            url = 'https://duckduckgo.com' + url
+        
+        return url.strip()
+
     def _clean_text(self, text: str) -> str:
         """Clean and normalize text."""
         if not text:
@@ -97,22 +118,25 @@ class WebSearchService:
         
         # Remove HTML tags
         text = re.sub(r'<[^>]+>', '', text)
+        # Decode HTML entities
+        text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+        text = text.replace('&quot;', '"').replace('&#39;', "'")
         # Normalize whitespace
         text = re.sub(r'\s+', ' ', text)
-        # Remove extra characters
-        text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
         
         return text.strip()
-    
+
     def _is_valid_url(self, url: str) -> bool:
         """Check if URL is valid and not an internal link."""
         if not url or not url.startswith('http'):
             return False
         
         # Skip unwanted domains
-        unwanted = ['duckduckgo.com', 'google.com/search', 'bing.com/search']
+        unwanted = ['duckduckgo.com', 'google.com', 'bing.com']
         for domain in unwanted:
             if domain in url.lower():
                 return False
         
-        return len(url) > 15
+        return len(url) > 10
+    
+    
