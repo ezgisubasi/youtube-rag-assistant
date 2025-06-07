@@ -1,7 +1,4 @@
-"""
-YouTube RAG Assistant - Professional Portfolio Project
-A specialized AI chatbot that provides leadership guidance using YouTube video content.
-"""
+""" A specialized AI chatbot that provides leadership guidance using YouTube video content."""
 
 print("🔍 [DEBUG] Starting app.py")
 
@@ -162,7 +159,7 @@ def display_response_with_source(content, sources):
         source = sources[0]  # Get first source
         video_title = getattr(source, 'video_title', 'Unknown')
         video_url = getattr(source, 'video_url', '#')
-        confidence = getattr(source, 'similarity_score', 0.0)
+        confidence = getattr(source, 'confidence_score', 0.0)
         
         st.markdown(f"""
         <div class="source-info">
@@ -183,7 +180,25 @@ def display_message(message):
         with st.chat_message("assistant"):
             content = message["content"]
             sources = message.get("sources", [])
-            display_response_with_source(content, sources)
+            # USE THE LLM CONFIDENCE FROM THE MESSAGE, NOT SOURCE
+            confidence = message.get("confidence", 0.0)
+            
+            # Display the main answer
+            st.write(content)
+            
+            # Display source information if available
+            if sources and len(sources) > 0:
+                source = sources[0]
+                video_title = getattr(source, 'video_title', 'Unknown')
+                video_url = getattr(source, 'video_url', '#')
+                
+                st.markdown(f"""
+                <div class="source-info">
+                    <strong>Source:</strong> {video_title}<br>
+                    <strong>Link:</strong> <a href="{video_url}" target="_blank">{video_url}</a><br>
+                    <strong>Confidence Score:</strong> {confidence:.2f}
+                </div>
+                """, unsafe_allow_html=True)
 
 def generate_response(question):
     """Generate response using RAG service and return structured data."""
