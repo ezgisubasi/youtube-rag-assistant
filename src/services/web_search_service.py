@@ -1,13 +1,12 @@
 # src/services/web_search_service.py
-"""Web search service using DuckDuckGo search - returns only the top result."""
+"""Web search service using DuckDuckGo search."""
 
 from typing import Optional
 from dataclasses import dataclass
 import sys
 from pathlib import Path
 import requests
-from urllib.parse import quote, unquote
-import re
+from urllib.parse import quote
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -20,37 +19,48 @@ class WebSearchResult:
     snippet: str
 
 class WebSearchService:
-    """Simple web search service - returns only the top result."""
+    """Simple web search service using DuckDuckGo lite."""
 
     def __init__(self):
         """Initialize web search service."""
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         print("Web Search Service initialized")
 
     def search(self, query: str) -> Optional[WebSearchResult]:
-        """Search web and return the top result only."""
+        """Search web and return the best result."""
         try:
             print(f"Searching web for: {query}")
             
-            # Try DuckDuckGo HTML search for the top result
-            result = self._search_ddg_html(query)
+            # Try to get real search results using DuckDuckGo lite
+            result = self._search_ddg_lite(query)
+            
             if result:
-                print(f"Found top result: {result.title}")
+                print(f"Found result: {result.title}")
                 return result
             
-            print("No search results found")
-            return None
+            # If no results, return a Google search link as fallback
+            print("No direct results found, returning Google search link")
+            return WebSearchResult(
+                title=f"Search results for: {query}",
+                url=f"https://www.google.com/search?q={quote(query)}",
+                snippet="Click to see search results on Google"
+            )
             
         except Exception as e:
             print(f"Web search error: {e}")
-            return None
+            return WebSearchResult(
+                title=f"Search: {query}",
+                url=f"https://www.google.com/search?q={quote(query)}",
+                snippet="Error during search. Click to search manually."
+            )
 
-    def _search_ddg_html(self, query: str) -> Optional[WebSearchResult]:
-        """Search using DuckDuckGo and return the first valid result."""
+    def _search_ddg_lite(self, query: str) -> Optional[WebSearchResult]:
+        """Search using DuckDuckGo lite HTML interface."""
         try:
-            url = "https://duckduckgo.com/html/"
+            # Use DuckDuckGo lite interface
+            url = "https://lite.duckduckgo.com/lite/"
             params = {'q': query}
             
             response = requests.get(url, params=params, headers=self.headers, timeout=10)
@@ -58,48 +68,54 @@ class WebSearchService:
             if response.status_code == 200:
                 html = response.text
                 
-                # Pattern to find the first result with title, URL, and snippet
-                pattern = r'<h2[^>]*class="[^"]*result[^"]*"[^>]*>.*?<a[^>]*href="([^"]+)"[^>]*>([^<]+)</a>.*?</h2>.*?<span[^>]*class="[^"]*result-snippet[^"]*"[^>]*>([^<]+)</span>'
+                # Simple regex to find the first real result
+                # DuckDuckGo lite has a simple structure
+                import re
                 
-                match = re.search(pattern, html, re.DOTALL | re.IGNORECASE)
+                # Pattern: Find links that are actual results (not DuckDuckGo internal)
+                # Look for: <a class="result-link" href="URL">TITLE</a>
+                pattern = r'<a[^>]*class="result-link"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>'
+                matches = re.findall(pattern, html)
                 
-                if match:
-                    url_found, title, snippet = match.groups()
+                if not matches:
+                    # Try alternative pattern for lite interface
+                    pattern = r'<td><a[^>]*href="(https?://[^"]+)"[^>]*>([^<]+)</a>'
+                    matches = re.findall(pattern, html)
+                
+                # Filter and return first good result
+                for found_url, title in matches:
+                    # Clean URL from DuckDuckGo redirects
+                    clean_url = self._clean_url(found_url)
                     
-                    # Clean the data
-                    url_found = self._clean_url(url_found)
-                    title = self._clean_text(title)
-                    snippet = self._clean_text(snippet)
-                    
-                    # Validate and return the first good result
-                    if (self._is_valid_url(url_found) and 
-                        len(title) > 3 and 
-                        len(snippet) > 5):
+                    # Skip DuckDuckGo internal links and invalid URLs
+                    if (self._is_valid_url(clean_url) and 
+                        len(title.strip()) > 10):  # Ensure it's a real title
+                        
+                        # Try to extract snippet
+                        snippet = self._extract_snippet(html, found_url, title)
                         
                         return WebSearchResult(
-                            title=title,
-                            url=url_found,
-                            snippet=snippet[:200] + "..." if len(snippet) > 200 else snippet
+                            title=title.strip(),
+                            url=clean_url,
+                            snippet=snippet
                         )
             
             return None
             
         except Exception as e:
-            print(f"DuckDuckGo search error: {e}")
+            print(f"DuckDuckGo lite search error: {e}")
             return None
-
+    
     def _clean_url(self, url: str) -> str:
         """Clean URL from DuckDuckGo redirects."""
-        if not url:
-            return ""
-        
-        # Handle DuckDuckGo redirects
-        if '/l/?uddg=' in url:
+        # Remove DuckDuckGo redirect wrappers
+        if url.startswith('/l/?kh=-1&uddg='):
             try:
-                decoded = unquote(url)
-                match = re.search(r'https?://[^&\s]+', decoded)
-                if match:
-                    return match.group(0)
+                import urllib.parse
+                decoded = urllib.parse.unquote(url)
+                real_url_match = re.search(r'https?://[^&]+', decoded)
+                if real_url_match:
+                    return real_url_match.group(0)
             except:
                 pass
         
@@ -110,31 +126,44 @@ class WebSearchService:
             url = 'https://duckduckgo.com' + url
         
         return url.strip()
-
-    def _clean_text(self, text: str) -> str:
-        """Clean and normalize text."""
-        if not text:
-            return ""
-        
-        # Remove HTML tags
-        text = re.sub(r'<[^>]+>', '', text)
-        # Decode HTML entities
-        text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-        text = text.replace('&quot;', '"').replace('&#39;', "'")
-        # Normalize whitespace
-        text = re.sub(r'\s+', ' ', text)
-        
-        return text.strip()
-
+    
     def _is_valid_url(self, url: str) -> bool:
         """Check if URL is valid and not an internal link."""
         if not url or not url.startswith('http'):
             return False
         
         # Skip unwanted domains
-        unwanted = ['duckduckgo.com', 'google.com', 'bing.com']
+        unwanted = ['duckduckgo.com', 'google.com/search', 'bing.com', 'yahoo.com']
         for domain in unwanted:
             if domain in url.lower():
                 return False
         
         return len(url) > 10
+    
+    def _extract_snippet(self, html: str, url: str, title: str) -> str:
+        """Try to extract a snippet for the result."""
+        try:
+            # In DuckDuckGo lite, snippets are usually in the next table cell
+            import re
+            
+            # Escape special regex characters in URL
+            escaped_url = re.escape(url)
+            
+            # Look for text after the link
+            pattern = rf'{escaped_url}[^<]*</a>[^<]*</td>[^<]*<td[^>]*>([^<]+)'
+            match = re.search(pattern, html)
+            
+            if match:
+                snippet = match.group(1).strip()
+                # Clean up the snippet
+                snippet = re.sub(r'\s+', ' ', snippet)  # Remove extra whitespace
+                if len(snippet) > 20:  # Ensure it's meaningful
+                    return snippet[:200] + "..." if len(snippet) > 200 else snippet
+            
+            # Fallback snippet - just the content without "Search result for"
+            return title
+            
+        except:
+            return title
+        
+        
