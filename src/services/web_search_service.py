@@ -43,7 +43,7 @@ class WebSearchService:
             # If no results, return a Google search link as fallback
             print("No direct results found, returning Google search link")
             return WebSearchResult(
-                title=f"Search results for: {query}",
+                title=f"{query}",
                 url=f"https://www.google.com/search?q={quote(query)}",
                 snippet="Click to see search results on Google"
             )
@@ -51,7 +51,7 @@ class WebSearchService:
         except Exception as e:
             print(f"Web search error: {e}")
             return WebSearchResult(
-                title=f"Search: {query}",
+                title=f"{query}",
                 url=f"https://www.google.com/search?q={quote(query)}",
                 snippet="Error during search. Click to search manually."
             )
@@ -167,4 +167,3 @@ class WebSearchService:
             return title
         
 
-        
