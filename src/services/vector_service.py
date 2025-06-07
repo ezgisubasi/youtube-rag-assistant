@@ -12,7 +12,6 @@ import traceback
 print("🔍 [DEBUG] Starting vector_service.py import")
 
 try:
-    # Use the modern QdrantVectorStore instead of deprecated Qdrant
     from langchain_qdrant import QdrantVectorStore
     print("✅ [DEBUG] QdrantVectorStore imported successfully")
 except Exception as e:
@@ -44,7 +43,6 @@ except Exception as e:
 current_dir = Path(__file__).parent
 src_dir = current_dir.parent
 sys.path.append(str(src_dir))
-print(f"🔍 [DEBUG] Added to sys.path: {src_dir}")
 
 try:
     from core.models import SearchResult
@@ -104,13 +102,12 @@ class VectorService:
             print(f"🔍 [DEBUG] About to load model: {self.config.embedding_model}")
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=self.config.embedding_model,
-                model_kwargs={'device': 'cpu'},  # Force CPU for Streamlit Cloud
+                model_kwargs={'device': 'cpu'},
                 show_progress=True
             )
             print("✅ [DEBUG] Embeddings initialized successfully")
         except Exception as e:
             print(f"❌ [DEBUG] Embeddings initialization failed: {e}")
-            # Try fallback model
             print("🔄 [DEBUG] Trying fallback embedding model...")
             try:
                 self.embeddings = HuggingFaceEmbeddings(
@@ -125,11 +122,24 @@ class VectorService:
         
         self.vector_store = None
         self.qdrant_client = None
+        self._initialization_attempted = False
+        self._initialization_successful = False
         print("✅ [DEBUG] VectorService.__init__ completed")
     
     def initialize_vector_store(self) -> bool:
         """Initialize vector store using transcripts as documents."""
         print("🔍 [DEBUG] initialize_vector_store started")
+        
+        # Check if already successfully initialized
+        if self._initialization_successful and self.vector_store is not None:
+            print("✅ [DEBUG] Vector store already initialized successfully")
+            return True
+        
+        if self._initialization_attempted:
+            print("⚠️ [DEBUG] Initialization already attempted and failed")
+            return False
+        
+        self._initialization_attempted = True
         
         try:
             import os
@@ -148,30 +158,24 @@ class VectorService:
         
             if transcripts_path.exists():
                 print(f"🔍 [DEBUG] Transcripts file size: {transcripts_path.stat().st_size} bytes")
-        
-            # List directory contents for debugging
-            print(f"🔍 [DEBUG] Files in current dir ({Path('.').absolute()}):")
-            for item in list(Path('.').iterdir())[:10]:
-                print(f"  - {item}")
-            
-            if Path('data').exists():
-                print(f"🔍 [DEBUG] Files in data/:")
-                for item in list(Path('data').iterdir())[:10]:
-                    print(f"  - {item}")
+            else:
+                print("❌ [DEBUG] Transcripts file does not exist!")
+                return False
         
             # Create vector DB directory
             print("🔍 [DEBUG] Creating vector DB directory...")
             vector_db_path.mkdir(parents=True, exist_ok=True)
             print("✅ [DEBUG] Vector DB directory created/exists")
 
-            # Initialize Qdrant client
-            print("🔍 [DEBUG] Initializing Qdrant client...")
-            try:
-                self.qdrant_client = QdrantClient(path=str(vector_db_path))
-                print("✅ [DEBUG] Qdrant client initialized")
-            except Exception as e:
-                print(f"❌ [DEBUG] Failed to initialize Qdrant client: {e}")
-                raise e
+            # Initialize Qdrant client only once
+            if self.qdrant_client is None:
+                print("🔍 [DEBUG] Initializing Qdrant client...")
+                try:
+                    self.qdrant_client = QdrantClient(path=str(vector_db_path))
+                    print("✅ [DEBUG] Qdrant client initialized")
+                except Exception as e:
+                    print(f"❌ [DEBUG] Failed to initialize Qdrant client: {e}")
+                    return False
 
             # Check if collection already exists
             print("🔍 [DEBUG] Checking if collection exists...")
@@ -187,7 +191,6 @@ class VectorService:
             if collection_exists:
                 print("🔍 [DEBUG] Existing collection found, attempting to load...")
                 try:
-                    # Use modern QdrantVectorStore
                     self.vector_store = QdrantVectorStore(
                         client=self.qdrant_client,
                         collection_name=self.config.collection_name,
@@ -197,6 +200,7 @@ class VectorService:
                     # Test the vector store
                     test_results = self.vector_store.similarity_search("test", k=1)
                     print(f"✅ [DEBUG] Existing vector store loaded successfully ({len(test_results)} test results)")
+                    self._initialization_successful = True
                     return True
                     
                 except Exception as e:
@@ -207,12 +211,6 @@ class VectorService:
                         print("🗑️ [DEBUG] Deleted problematic collection")
                     except:
                         pass
-            
-            # Check for transcripts file
-            print("🔍 [DEBUG] Looking for transcripts file...")
-            if not transcripts_path.exists():
-                print(f"❌ [DEBUG] Transcripts file not found at: {transcripts_path}")
-                return False
             
             # Read transcripts file
             print("🔍 [DEBUG] Reading transcripts file...")
@@ -254,7 +252,7 @@ class VectorService:
             print(f"✅ [DEBUG] Created {len(documents)} documents")
             
             # Create vector store using modern QdrantVectorStore
-            print("🔍 [DEBUG] Creating vector store...")
+            print("🔍 [DEBUG] Creating vector store with QdrantVectorStore.from_documents...")
             try:
                 self.vector_store = QdrantVectorStore.from_documents(
                     documents=documents,
@@ -263,7 +261,14 @@ class VectorService:
                     collection_name=self.config.collection_name
                 )
                 print("✅ [DEBUG] Vector store created successfully")
+                
+                # Test the newly created vector store
+                test_results = self.vector_store.similarity_search("liderlik", k=1)
+                print(f"✅ [DEBUG] Vector store test successful ({len(test_results)} results)")
+                
+                self._initialization_successful = True
                 return True
+                
             except Exception as e:
                 print(f"❌ [DEBUG] Vector store creation failed: {e}")
                 print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
@@ -277,8 +282,10 @@ class VectorService:
     def search(self, query: str, top_k: int = None) -> List[SearchResult]:
         """Search with similarity scores from QdrantVectorStore."""
         print(f"🔍 [DEBUG] search called with query: '{query}', top_k: {top_k}")
+        print(f"🔍 [DEBUG] Vector store status: {self.vector_store is not None}")
+        print(f"🔍 [DEBUG] Initialization status: successful={self._initialization_successful}, attempted={self._initialization_attempted}")
         
-        if not self.vector_store:
+        if not self.vector_store or not self._initialization_successful:
             print("⚠️ [DEBUG] Vector store not initialized, attempting to initialize...")
             if not self.initialize_vector_store():
                 print("❌ [DEBUG] Failed to initialize vector store for search")

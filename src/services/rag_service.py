@@ -76,7 +76,7 @@ class RAGConfig:
     search_top_k: int = 5
     # LLM confidence thresholds
     high_confidence_threshold: float = 0.75
-    medium_confidence_threshold: float = 0.50
+    medium_confidence_threshold: float = 0.30
 
 class RAGService:
     """
