@@ -8,3 +8,7 @@ python-dotenv
 langchain-qdrant
 langchain-huggingface
 qdrant-client
+sentence-transformers
+transformers
+torch
+requests
