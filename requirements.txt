@@ -7,3 +7,4 @@ PyYAML
 python-dotenv
 langchain-qdrant
 langchain-huggingface
+qdrant-client
