@@ -24,7 +24,7 @@ class WebSearchService:
     def __init__(self):
         """Initialize web search service."""
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         print("Web Search Service initialized")
 
@@ -83,18 +83,20 @@ class WebSearchService:
                     matches = re.findall(pattern, html)
                 
                 # Filter and return first good result
-                for url, title in matches:
-                    # Skip DuckDuckGo internal links
-                    if ('duckduckgo.com' not in url and 
-                        url.startswith('http') and
+                for found_url, title in matches:
+                    # Clean URL from DuckDuckGo redirects
+                    clean_url = self._clean_url(found_url)
+                    
+                    # Skip DuckDuckGo internal links and invalid URLs
+                    if (self._is_valid_url(clean_url) and 
                         len(title.strip()) > 10):  # Ensure it's a real title
                         
                         # Try to extract snippet
-                        snippet = self._extract_snippet(html, url, title)
+                        snippet = self._extract_snippet(html, found_url, title)
                         
                         return WebSearchResult(
                             title=title.strip(),
-                            url=url,
+                            url=clean_url,
                             snippet=snippet
                         )
             
@@ -103,6 +105,40 @@ class WebSearchService:
         except Exception as e:
             print(f"DuckDuckGo lite search error: {e}")
             return None
+    
+    def _clean_url(self, url: str) -> str:
+        """Clean URL from DuckDuckGo redirects."""
+        # Remove DuckDuckGo redirect wrappers
+        if url.startswith('/l/?kh=-1&uddg='):
+            try:
+                import urllib.parse
+                decoded = urllib.parse.unquote(url)
+                real_url_match = re.search(r'https?://[^&]+', decoded)
+                if real_url_match:
+                    return real_url_match.group(0)
+            except:
+                pass
+        
+        # Fix relative URLs
+        if url.startswith('//'):
+            url = 'https:' + url
+        elif url.startswith('/'):
+            url = 'https://duckduckgo.com' + url
+        
+        return url.strip()
+    
+    def _is_valid_url(self, url: str) -> bool:
+        """Check if URL is valid and not an internal link."""
+        if not url or not url.startswith('http'):
+            return False
+        
+        # Skip unwanted domains
+        unwanted = ['duckduckgo.com', 'google.com/search', 'bing.com', 'yahoo.com']
+        for domain in unwanted:
+            if domain in url.lower():
+                return False
+        
+        return len(url) > 10
     
     def _extract_snippet(self, html: str, url: str, title: str) -> str:
         """Try to extract a snippet for the result."""
@@ -124,8 +160,8 @@ class WebSearchService:
                 if len(snippet) > 20:  # Ensure it's meaningful
                     return snippet[:200] + "..." if len(snippet) > 200 else snippet
             
-            # Fallback snippet
-            return f"Information about: {title}"
+            # Fallback snippet - just the content without "Search result for"
+            return title
             
         except:
-            return f"Search result for: {title}"
+            return title
