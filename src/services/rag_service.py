@@ -222,7 +222,7 @@ Answer:"""
         return result
     
     def evaluate_response_quality(self, query: str, response: str, language: str) -> float:
-        """Evaluate response quality using LLM."""
+        """Evaluate response quality using LLM - detects irrelevant/negative responses."""
         print(f"🔍 [DEBUG] evaluate_response_quality called")
         print(f"🔍 [DEBUG] Query: '{query[:50]}...'")
         print(f"🔍 [DEBUG] Response: '{response[:100]}...'")
@@ -230,27 +230,39 @@ Answer:"""
         
         try:
             if language == 'turkish':
-                eval_prompt = f"""Bu RAG yanıtının kalitesini değerlendir:
+                eval_prompt = f"""Bu RAG yanıtını değerlendir:
 
-Sorgu: {query}
-Yanıt: {response}
+    Sorgu: {query}
+    Yanıt: {response}
 
-Bu yanıt kullanıcının sorusunu ne kadar iyi yanıtlıyor? Alakalı, doğru, tam ve anlaşılır mı?
+    Bu yanıt kullanıcının sorusunu gerçekten yanıtlıyor mu?
 
-0.0 (çok kötü) ile 1.0 (mükemmel) arasında bir puan ver.
+    ÖNEMLI KURALLAR:
+    - Eğer yanıt "bulunamadı", "bilgi yok", "içerikte yer almıyor", "bahsedilmiyor" gibi olumsuz ifadeler içeriyorsa → 0.0 ver
+    - Eğer yanıt soruyla alakasız konulardan bahsediyorsa → 0.0 ver  
+    - Eğer yanıt soruyu doğrudan ve faydalı şekilde yanıtlıyorsa → 0.7-1.0 arasında ver
+    - Eğer yanıt kısmen faydalıysa → 0.3-0.6 arasında ver
 
-Sadece sayı ver:"""
+    0.0 (alakasız/bulunamadı) ile 1.0 (mükemmel yanıt) arasında puan ver.
+
+    Sadece sayı ver:"""
             else:
-                eval_prompt = f"""Evaluate the quality of this RAG response:
+                eval_prompt = f"""Evaluate this RAG response:
 
-Query: {query}
-Response: {response}
+    Query: {query}
+    Response: {response}
 
-How well does this response answer the user's question? Consider relevance, accuracy, completeness, and clarity.
+    Does this response actually answer the user's question?
 
-Rate from 0.0 (very poor) to 1.0 (excellent).
+    IMPORTANT RULES:
+    - If response says "not found", "no information", "not mentioned", "not available" etc. → give 0.0
+    - If response talks about irrelevant topics instead of answering → give 0.0
+    - If response directly and helpfully answers the question → give 0.7-1.0
+    - If response is partially helpful → give 0.3-0.6
 
-Return only the number:"""
+    Rate from 0.0 (irrelevant/not found) to 1.0 (excellent answer).
+
+    Return only the number:"""
             
             print("🔍 [DEBUG] Calling LLM for confidence evaluation...")
             eval_response = self.llm.invoke(eval_prompt)
@@ -267,14 +279,36 @@ Return only the number:"""
                 print(f"✅ [DEBUG] Final LLM confidence: {result}")
                 return result
             
+            # Additional fallback: check for negative keywords in response
+            negative_keywords_tr = ['bulunamadı', 'bulunmamaktadır', 'yer almıyor', 'bahsedilmiyor', 'bilgi yok', 'mevcut değil']
+            negative_keywords_en = ['not found', 'no information', 'not mentioned', 'not available', 'does not contain']
+            
+            keywords = negative_keywords_tr if language == 'turkish' else negative_keywords_en
+            
+            if any(keyword in response.lower() for keyword in keywords):
+                print(f"⚠️ [DEBUG] Negative keywords detected, forcing confidence to 0.0")
+                return 0.0
+            
             print("⚠️ [DEBUG] No valid confidence score found, using fallback 0.5")
             return 0.5  # Fallback
             
         except Exception as e:
             print(f"❌ [DEBUG] Error evaluating response quality: {e}")
             print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
+            
+            # Emergency fallback: check for negative keywords
+            negative_keywords_tr = ['bulunamadı', 'bulunmamaktadır', 'yer almıyor', 'bahsedilmiyor']
+            negative_keywords_en = ['not found', 'no information', 'not mentioned']
+            
+            keywords = negative_keywords_tr if language == 'turkish' else negative_keywords_en
+            
+            if any(keyword in response.lower() for keyword in keywords):
+                print(f"⚠️ [DEBUG] Emergency: Negative keywords detected, returning 0.0")
+                return 0.0
+            
             return 0.5
-    
+
+
     def generate_response(self, query: str) -> RAGResponse:
         """
         Generate response using RAG with LLM confidence evaluation.
