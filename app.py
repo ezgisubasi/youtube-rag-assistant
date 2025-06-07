@@ -400,7 +400,7 @@ def main():
     for message in st.session_state.messages:
         display_message(message)
 
-    # Chat input
+    # Chat input - FIXED VERSION
     if prompt := st.chat_input("Ask a question about leadership or business..."):
         print(f"🔍 [DEBUG] Chat input received: '{prompt}'")
         
@@ -412,28 +412,17 @@ def main():
         }
         st.session_state.messages.append(user_message)
 
-        # Display user message
-        with st.chat_message("user"):
-            st.write(prompt)
+        # Generate response BEFORE displaying anything
+        with st.spinner("Thinking..."):
+            response_message = generate_response(prompt)
 
-        # Generate and display response
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response_message = generate_response(prompt)
-
-            if response_message:
-                # Display response with source
-                display_response_with_source(
-                    response_message["content"], 
-                    response_message["sources"]
-                )
-                
-                # Add to message history
-                st.session_state.messages.append(response_message)
-                st.session_state.conversation_count += 1
-                
-                # Show response time
-                st.caption(f"Response time: {response_message['response_time']}")
+        if response_message:
+            # Add to message history FIRST
+            st.session_state.messages.append(response_message)
+            st.session_state.conversation_count += 1
+            
+            # Then trigger rerun to display everything properly
+            st.rerun()
 
     # Footer
     st.markdown("---")
