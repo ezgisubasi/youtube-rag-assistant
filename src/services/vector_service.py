@@ -12,8 +12,8 @@ from langchain_qdrant import Qdrant
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
 
-# Add src to path for imports
-sys.path.append('src')
+# Add path for imports
+sys.path.append(str(Path(__file__).parent.parent))
 
 from core.models import SearchResult
 from core.config import get_config
