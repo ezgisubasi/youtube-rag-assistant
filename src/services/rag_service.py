@@ -1,7 +1,6 @@
 # src/services/rag_service.py
 """
-Professional RAG Service with LLM-based confidence evaluation.
-Production-ready implementation for portfolio demonstration.
+Simplified RAG Service with only LLM confidence evaluation.
 """
 
 from typing import List, Optional
@@ -34,31 +33,28 @@ class RAGConfig:
     api_key: str
     temperature: float = 0.7
     max_tokens: int = 1024
-    min_similarity_threshold: float = 0.1  # Lowered for testing
     search_top_k: int = 5
-    # LLM confidence thresholds
-    high_confidence_threshold: float = 0.75
-    medium_confidence_threshold: float = 0.3  # Lowered for testing
+    # Only LLM confidence threshold
+    confidence_threshold: float = 0.3
 
 class RAGService:
     """
-    Professional RAG service with LLM-based confidence evaluation.
+    Simplified RAG service with only LLM confidence evaluation.
     
-    Features:
-    - Vector-based semantic search
-    - LLM confidence scoring
-    - Intelligent web search fallback
-    - Language matching validation
-    - Professional error handling
+    Flow:
+    1. Get YouTube content (any content is fine)
+    2. Generate answer from content
+    3. LLM evaluates answer quality
+    4. If confidence >= 0.3 → use answer
+    5. If confidence < 0.3 → web search fallback
     """
     
     def __init__(self):
-        """Initialize RAG service with all components."""
+        """Initialize RAG service."""
         print("🔍 [DEBUG] RAGService.__init__ started")
-        print("Initializing RAG Service with LLM Confidence...")
+        print("Initializing simplified RAG Service...")
         
         # Load configuration
-        print("🔍 [DEBUG] Loading configuration...")
         config = get_config()
         gemini_api_key = config.gemini_api_key or os.getenv("GEMINI_API_KEY")
         
@@ -71,13 +67,9 @@ class RAGService:
             api_key=gemini_api_key
         )
         
-        print(f"🔍 [DEBUG] RAG Config thresholds:")
-        print(f"  - min_similarity_threshold: {self.config.min_similarity_threshold}")
-        print(f"  - medium_confidence_threshold: {self.config.medium_confidence_threshold}")
-        print(f"  - high_confidence_threshold: {self.config.high_confidence_threshold}")
+        print(f"🔍 [DEBUG] Confidence threshold: {self.config.confidence_threshold}")
         
         # Initialize Gemini AI
-        print("🔍 [DEBUG] Initializing Gemini AI...")
         genai.configure(api_key=self.config.api_key)
         self.llm = ChatGoogleGenerativeAI(
             model=self.config.model_name,
@@ -85,19 +77,14 @@ class RAGService:
             temperature=self.config.temperature,
             max_output_tokens=self.config.max_tokens
         )
-        print("✅ [DEBUG] Gemini AI initialized")
         
         # Initialize services
-        print("🔍 [DEBUG] Initializing vector service...")
         self.vector_service = VectorService()
         self.vector_service.initialize_vector_store()
-        print("✅ [DEBUG] Vector service initialized")
         
-        print("🔍 [DEBUG] Initializing web search service...")
         self.web_search_service = WebSearchService()
-        print("✅ [DEBUG] Web search service initialized")
         
-        # Prompt templates for response generation
+        # Prompt templates
         self.prompts = {
             'turkish': {
                 'youtube': """Sen, yalnızca aşağıdaki içerikten yola çıkarak, kullanıcının sorusunu Türkçe ve profesyonel bir dille yanıtlayan bir yapay zekâ asistansın.
@@ -177,158 +164,104 @@ Answer:"""
     
     def detect_language(self, text: str) -> str:
         """Detect if text is Turkish or English."""
-        print(f"🔍 [DEBUG] Detecting language for: '{text[:50]}...'")
-        
         # Turkish-specific characters
         turkish_chars = set('çğıöşüÇĞIİÖŞÜ')
         
-        # Turkish language indicators
+        # Turkish words
         turkish_words = {
-            'nedir', 'nasıl', 'neden', 'hangi', 'kimse', 'hiç', 'için', 'olan',
-            'bu', 'bir', 'de', 'da', 'ile', 've', 'veya', 'ama', 'fakat',
-            'çünkü', 'belki', 'her', 'bazı', 'tüm', 'bütün', 'şey', 'zaman',
-            'yer', 'gün', 'yıl', 'kişi', 'insan', 'iyi', 'kötü', 'büyük',
-            'küçük', 'yeni', 'eski', 'var', 'yok', 'et', 'ol', 'yap', 'gel',
-            'git', 'al', 'ver', 'gör', 'bil', 'iste', 'söyle', 'çalış',
-            'yaşa', 'öğren', 'anla', 'düşün', 'inan', 'hakkında', 'üzerine',
-            'karşı', 'doğru', 'göre', 'kadar', 'önce', 'sonra', 'şimdi',
-            'daha', 'çok', 'az', 'en', 'mi', 'mı', 'mu', 'mü', 'misin',
-            'musun', 'neler', 'ne', 'kim', 'nerede', 'ne zaman', 'niçin',
-            'merhaba', 'günaydın', 'iyi günler', 'teşekkür', 'lütfen'
+            'nedir', 'nasıl', 'neden', 'hangi', 'için', 'olan', 'bu', 'bir', 
+            'de', 'da', 'ile', 've', 'veya', 'çünkü', 'şey', 'zaman', 'mi', 
+            'mı', 'mu', 'mü', 'ne', 'kim', 'nerede', 'önemli', 'söz'
         }
         
         text_lower = text.lower()
-        words = re.findall(r'\b\w+\b', text_lower)
         
         # Check for Turkish characters
         if any(char in text for char in turkish_chars):
-            print("✅ [DEBUG] Turkish characters detected")
             return 'turkish'
         
-        # Count Turkish words and suffixes
-        turkish_score = 0
-        for word in words:
-            if word in turkish_words:
-                turkish_score += 2
-            elif any(word.endswith(suffix) for suffix in ['ler', 'lar', 'dir', 'dır', 'miş', 'muş', 'lik', 'lık']):
-                turkish_score += 1
+        # Count Turkish words
+        words = re.findall(r'\b\w+\b', text_lower)
+        turkish_score = sum(1 for word in words if word in turkish_words)
         
-        # Check for Turkish question patterns
-        if re.search(r'\b(nasıl|neden|ne|nedir|hangi|kim|nerede|ne zaman)\b', text_lower):
-            turkish_score += 3
-        
-        result = 'turkish' if turkish_score > 0 else 'english'
-        print(f"✅ [DEBUG] Language detected: {result} (score: {turkish_score})")
-        return result
+        return 'turkish' if turkish_score > 0 else 'english'
     
     def evaluate_response_quality(self, query: str, response: str, language: str) -> float:
-        """Evaluate response quality using LLM - detects irrelevant/negative responses."""
-        print(f"🔍 [DEBUG] evaluate_response_quality called")
-        print(f"🔍 [DEBUG] Query: '{query[:50]}...'")
-        print(f"🔍 [DEBUG] Response: '{response[:100]}...'")
-        print(f"🔍 [DEBUG] Language: {language}")
-        
+        """Evaluate response quality using LLM."""
         try:
             if language == 'turkish':
                 eval_prompt = f"""Bu RAG yanıtını değerlendir:
 
-    Sorgu: {query}
-    Yanıt: {response}
+Sorgu: {query}
+Yanıt: {response}
 
-    Bu yanıt kullanıcının sorusunu gerçekten yanıtlıyor mu?
+Bu yanıt kullanıcının sorusunu gerçekten yanıtlıyor mu?
 
-    ÖNEMLI KURALLAR:
-    - Eğer yanıt "bulunamadı", "bilgi yok", "içerikte yer almıyor", "bahsedilmiyor" gibi olumsuz ifadeler içeriyorsa → 0.0 ver
-    - Eğer yanıt soruyla alakasız konulardan bahsediyorsa → 0.0 ver  
-    - Eğer yanıt soruyu doğrudan ve faydalı şekilde yanıtlıyorsa → 0.7-1.0 arasında ver
-    - Eğer yanıt kısmen faydalıysa → 0.3-0.6 arasında ver
+ÖNEMLI KURALLAR:
+- Eğer yanıt "bulunamadı", "bilgi yok", "içerikte yer almıyor", "bahsedilmiyor" gibi olumsuz ifadeler içeriyorsa → 0.0 ver
+- Eğer yanıt soruyla alakasız konulardan bahsediyorsa → 0.0 ver  
+- Eğer yanıt soruyu doğrudan ve faydalı şekilde yanıtlıyorsa → 0.7-1.0 arasında ver
+- Eğer yanıt kısmen faydalıysa → 0.3-0.6 arasında ver
 
-    0.0 (alakasız/bulunamadı) ile 1.0 (mükemmel yanıt) arasında puan ver.
+0.0 (alakasız/bulunamadı) ile 1.0 (mükemmel yanıt) arasında puan ver.
 
-    Sadece sayı ver:"""
+Sadece sayı ver:"""
             else:
                 eval_prompt = f"""Evaluate this RAG response:
 
-    Query: {query}
-    Response: {response}
+Query: {query}
+Response: {response}
 
-    Does this response actually answer the user's question?
+Does this response actually answer the user's question?
 
-    IMPORTANT RULES:
-    - If response says "not found", "no information", "not mentioned", "not available" etc. → give 0.0
-    - If response talks about irrelevant topics instead of answering → give 0.0
-    - If response directly and helpfully answers the question → give 0.7-1.0
-    - If response is partially helpful → give 0.3-0.6
+IMPORTANT RULES:
+- If response says "not found", "no information", "not mentioned", "not available" etc. → give 0.0
+- If response talks about irrelevant topics instead of answering → give 0.0
+- If response directly and helpfully answers the question → give 0.7-1.0
+- If response is partially helpful → give 0.3-0.6
 
-    Rate from 0.0 (irrelevant/not found) to 1.0 (excellent answer).
+Rate from 0.0 (irrelevant/not found) to 1.0 (excellent answer).
 
-    Return only the number:"""
+Return only the number:"""
             
-            print("🔍 [DEBUG] Calling LLM for confidence evaluation...")
             eval_response = self.llm.invoke(eval_prompt)
             confidence_text = eval_response.content.strip()
-            print(f"🔍 [DEBUG] LLM response: '{confidence_text}'")
             
             # Extract confidence score
             numbers = re.findall(r'0\.\d+|1\.0|0\.0', confidence_text)
-            print(f"🔍 [DEBUG] Extracted numbers: {numbers}")
             
             if numbers:
                 confidence = float(numbers[0])
-                result = max(0.0, min(1.0, confidence))
-                print(f"✅ [DEBUG] Final LLM confidence: {result}")
-                return result
+                return max(0.0, min(1.0, confidence))
             
-            # Additional fallback: check for negative keywords in response
-            negative_keywords_tr = ['bulunamadı', 'bulunmamaktadır', 'yer almıyor', 'bahsedilmiyor', 'bilgi yok', 'mevcut değil']
-            negative_keywords_en = ['not found', 'no information', 'not mentioned', 'not available', 'does not contain']
+            # Keyword fallback
+            negative_keywords_tr = ['bulunamadı', 'bulunmamaktadır', 'yer almıyor', 'bahsedilmiyor', 'bilgi yok']
+            negative_keywords_en = ['not found', 'no information', 'not mentioned', 'not available']
             
             keywords = negative_keywords_tr if language == 'turkish' else negative_keywords_en
             
             if any(keyword in response.lower() for keyword in keywords):
-                print(f"⚠️ [DEBUG] Negative keywords detected, forcing confidence to 0.0")
                 return 0.0
             
-            print("⚠️ [DEBUG] No valid confidence score found, using fallback 0.5")
             return 0.5  # Fallback
             
         except Exception as e:
-            print(f"❌ [DEBUG] Error evaluating response quality: {e}")
-            print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
-            
-            # Emergency fallback: check for negative keywords
-            negative_keywords_tr = ['bulunamadı', 'bulunmamaktadır', 'yer almıyor', 'bahsedilmiyor']
-            negative_keywords_en = ['not found', 'no information', 'not mentioned']
-            
-            keywords = negative_keywords_tr if language == 'turkish' else negative_keywords_en
-            
-            if any(keyword in response.lower() for keyword in keywords):
-                print(f"⚠️ [DEBUG] Emergency: Negative keywords detected, returning 0.0")
+            print(f"❌ [DEBUG] Error evaluating response: {e}")
+            # Emergency keyword check
+            if any(word in response.lower() for word in ['bulunamadı', 'not found']):
                 return 0.0
-            
             return 0.5
 
-
     def generate_response(self, query: str) -> RAGResponse:
-        """
-        Generate response using RAG with LLM confidence evaluation.
-        
-        Flow:
-        1. Vector search for relevant content
-        2. Language compatibility check
-        3. Generate RAG response
-        4. Evaluate response quality with LLM
-        5. Return high-quality response or fallback to web search
-        """
+        """Generate response using simplified RAG flow."""
         print(f"🔍 [DEBUG] generate_response called with: '{query}'")
         
         try:
-            # Detect query language
+            # Detect language
             query_language = self.detect_language(query)
             print(f"✅ [DEBUG] Query language: {query_language}")
             
-            # Get best YouTube content
-            print("🔍 [DEBUG] Getting YouTube content...")
+            # Get YouTube content (any content is fine, no similarity threshold)
             youtube_result = self._get_youtube_content(query)
             
             if not youtube_result:
@@ -336,56 +269,44 @@ Answer:"""
                 return self._web_search_fallback(query, query_language)
             
             print(f"✅ [DEBUG] YouTube content found: {youtube_result.video_title[:50]}...")
-            print(f"🔍 [DEBUG] Vector similarity score: {youtube_result.similarity_score}")
             
             # Check language compatibility
-            print("🔍 [DEBUG] Checking language compatibility...")
             content_language = self.detect_language(youtube_result.text_content[:500])
             print(f"✅ [DEBUG] Content language: {content_language}")
             
             if query_language != content_language:
-                print(f"⚠️ [DEBUG] Language mismatch: query={query_language}, content={content_language}")
+                print(f"⚠️ [DEBUG] Language mismatch, going to web search")
                 return self._web_search_fallback(query, query_language)
             
-            # Check similarity threshold
-            print(f"🔍 [DEBUG] Similarity check: {llm_confidence} >= {self.config.medium_confidence_threshold}")
-            if llm_confidence < self.config.medium_confidence_threshold:
-                print("⚠️ [DEBUG] Similarity below threshold, going to web search")
-                return self._web_search_fallback(query, query_language)
-            
-            # Generate RAG response
-            print("🔍 [DEBUG] Generating RAG answer...")
+            # Generate answer from YouTube content
+            print("🔍 [DEBUG] Generating answer from YouTube content...")
             rag_answer = self._generate_youtube_answer(query, youtube_result, query_language)
-            print(f"✅ [DEBUG] RAG answer: '{rag_answer[:100]}...'")
+            print(f"✅ [DEBUG] Answer generated: '{rag_answer[:100]}...'")
             
-            # THE CRITICAL PART: Evaluate response quality using LLM
-            print("🔍 [DEBUG] *** EVALUATING LLM CONFIDENCE ***")
+            # Evaluate answer quality with LLM
+            print("🔍 [DEBUG] Evaluating answer quality...")
             llm_confidence = self.evaluate_response_quality(query, rag_answer, query_language)
-            print(f"🔍 [DEBUG] *** LLM CONFIDENCE RESULT: {llm_confidence} ***")
+            print(f"✅ [DEBUG] LLM confidence: {llm_confidence}")
             
             # Decision based on LLM confidence
-            print(f"🔍 [DEBUG] *** CONFIDENCE DECISION ***")
-            print(f"🔍 [DEBUG] LLM confidence: {llm_confidence}")
-            print(f"🔍 [DEBUG] Medium threshold: {self.config.medium_confidence_threshold}")
-            print(f"🔍 [DEBUG] Passes threshold: {llm_confidence >= self.config.medium_confidence_threshold}")
+            print(f"🔍 [DEBUG] Confidence check: {llm_confidence} >= {self.config.confidence_threshold}")
             
-            if llm_confidence >= self.config.medium_confidence_threshold:
-                # High or medium confidence - use RAG response
-                print("✅ [DEBUG] *** USING RAG RESPONSE (HIGH CONFIDENCE) ***")
+            if llm_confidence >= self.config.confidence_threshold:
+                # High confidence - use YouTube answer
+                print("✅ [DEBUG] Using YouTube answer (high confidence)")
                 return RAGResponse(
                     query=query,
                     answer=rag_answer,
                     sources=[youtube_result],
-                    confidence_score=llm_confidence  # THIS should be the LLM confidence, not similarity
+                    confidence_score=llm_confidence
                 )
             else:
                 # Low confidence - fallback to web search
-                print("⚠️ [DEBUG] *** FALLING BACK TO WEB SEARCH (LOW CONFIDENCE) ***")
+                print("⚠️ [DEBUG] Falling back to web search (low confidence)")
                 return self._web_search_fallback(query, query_language)
             
         except Exception as e:
-            print(f"❌ [DEBUG] Error generating response: {e}")
-            print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
+            print(f"❌ [DEBUG] Error in generate_response: {e}")
             language = self.detect_language(query)
             error_message = (
                 f"Yanıt oluşturulurken hata oluştu: {str(e)}" 
@@ -401,32 +322,22 @@ Answer:"""
     
     def _get_youtube_content(self, query: str) -> Optional[SearchResult]:
         """Get best YouTube content from vector search."""
-        print(f"🔍 [DEBUG] _get_youtube_content called with: '{query}'")
         try:
             search_results = self.vector_service.search(query, top_k=self.config.search_top_k)
-            result = search_results[0] if search_results else None
-            if result:
-                print(f"✅ [DEBUG] Found YouTube content: {result.video_title[:50]}...")
-            else:
-                print("⚠️ [DEBUG] No YouTube content found")
-            return result
+            return search_results[0] if search_results else None
         except Exception as e:
             print(f"❌ [DEBUG] YouTube search error: {e}")
             return None
     
     def _generate_youtube_answer(self, question: str, video: SearchResult, language: str) -> str:
         """Generate answer from YouTube content."""
-        print(f"🔍 [DEBUG] _generate_youtube_answer called for language: {language}")
         try:
             prompt = self.prompts[language]['youtube'].format(
                 video_content=video.text_content,
                 question=question
             )
-            print("🔍 [DEBUG] Invoking LLM for YouTube answer...")
             response = self.llm.invoke(prompt)
-            answer = response.content.strip()
-            print(f"✅ [DEBUG] YouTube answer generated: {answer[:100]}...")
-            return answer
+            return response.content.strip()
         except Exception as e:
             print(f"❌ [DEBUG] Error generating YouTube answer: {e}")
             return (
@@ -437,17 +348,13 @@ Answer:"""
     
     def _generate_web_answer(self, question: str, web_content: str, language: str) -> str:
         """Generate answer from web content."""
-        print(f"🔍 [DEBUG] _generate_web_answer called for language: {language}")
         try:
             prompt = self.prompts[language]['web'].format(
                 web_content=web_content,
                 question=question
             )
-            print("🔍 [DEBUG] Invoking LLM for web answer...")
             response = self.llm.invoke(prompt)
-            answer = response.content.strip()
-            print(f"✅ [DEBUG] Web answer generated: {answer[:100]}...")
-            return answer
+            return response.content.strip()
         except Exception as e:
             print(f"❌ [DEBUG] Error generating web answer: {e}")
             return (
@@ -458,15 +365,14 @@ Answer:"""
     
     def _web_search_fallback(self, query: str, language: str) -> RAGResponse:
         """Fallback to web search when RAG confidence is low."""
-        print(f"🔍 [DEBUG] _web_search_fallback called for language: {language}")
         try:
             web_result = self.web_search_service.search(query)
             
             if web_result:
-                print(f"✅ [DEBUG] Web search result found: {web_result.title[:50]}...")
+                print(f"✅ [DEBUG] Web search result: {web_result.title[:50]}...")
                 web_answer = self._generate_web_answer(query, web_result.snippet, language)
                 
-                # Evaluate web response quality too
+                # Evaluate web response quality
                 web_confidence = self.evaluate_response_quality(query, web_answer, language)
                 
                 web_search_result = SearchResult(
@@ -474,18 +380,17 @@ Answer:"""
                     video_title=web_result.title,
                     video_url=web_result.url,
                     text_content=web_result.snippet,
-                    similarity_score=web_confidence  # This will be the LLM confidence for web results
+                    similarity_score=web_confidence
                 )
                 
                 return RAGResponse(
                     query=query,
                     answer=web_answer,
                     sources=[web_search_result],
-                    confidence_score=web_confidence  # LLM confidence, not similarity
+                    confidence_score=web_confidence
                 )
             
             # No content found anywhere
-            print("⚠️ [DEBUG] No web content found either")
             no_content_message = (
                 "Bu soruya yanıt verebilmek için hem video arşivimde hem de web'de yeterli bilgi bulunamadı." 
                 if language == 'turkish' 
