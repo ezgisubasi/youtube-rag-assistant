@@ -331,4 +331,3 @@ class VectorService:
             print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
             return []
 
-print("✅ [DEBUG] vector_service.py import completed")
