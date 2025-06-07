@@ -2,6 +2,7 @@ streamlit
 google-generativeai
 langchain
 langchain-google-genai
+langchain-community
 pydantic
 PyYAML
 python-dotenv
@@ -12,3 +13,4 @@ sentence-transformers
 transformers
 torch
 requests
+duckduckgo-search
