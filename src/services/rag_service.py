@@ -348,8 +348,8 @@ Answer:"""
                 return self._web_search_fallback(query, query_language)
             
             # Check similarity threshold
-            print(f"🔍 [DEBUG] Similarity check: {youtube_result.similarity_score} >= {self.config.min_similarity_threshold}")
-            if youtube_result.similarity_score < self.config.min_similarity_threshold:
+            print(f"🔍 [DEBUG] Similarity check: {llm_confidence} >= {self.config.medium_confidence_threshold}")
+            if llm_confidence < self.config.medium_confidence_threshold:
                 print("⚠️ [DEBUG] Similarity below threshold, going to web search")
                 return self._web_search_fallback(query, query_language)
             
