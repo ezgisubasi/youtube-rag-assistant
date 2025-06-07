@@ -4,8 +4,6 @@ Professional RAG Service with LLM-based confidence evaluation.
 Production-ready implementation for portfolio demonstration.
 """
 
-print("🔍 [DEBUG] Starting rag_service.py import")
-
 from typing import List, Optional
 from dataclasses import dataclass
 import sys
@@ -14,56 +12,20 @@ import os
 import re
 import traceback
 
-print("🔍 [DEBUG] Basic imports completed")
+import google.generativeai as genai
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-try:
-    import google.generativeai as genai
-    print("✅ [DEBUG] google.generativeai imported successfully")
-except Exception as e:
-    print(f"❌ [DEBUG] google.generativeai import failed: {e}")
-    raise
-
-try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    print("✅ [DEBUG] ChatGoogleGenerativeAI imported successfully")
-except Exception as e:
-    print(f"❌ [DEBUG] ChatGoogleGenerativeAI import failed: {e}")
-    raise
+print("🔍 [DEBUG] Starting rag_service.py import")
 
 # Add src to path for imports
 current_dir = Path(__file__).parent
 src_dir = current_dir.parent
 sys.path.append(str(src_dir))
-print(f"🔍 [DEBUG] Added to sys.path: {src_dir}")
 
-try:
-    from core.models import SearchResult, RAGResponse
-    print("✅ [DEBUG] core.models imported successfully")
-except Exception as e:
-    print(f"❌ [DEBUG] core.models import failed: {e}")
-    raise
-
-try:
-    from core.config import get_config, get_prompts
-    print("✅ [DEBUG] core.config imported successfully")
-except Exception as e:
-    print(f"❌ [DEBUG] core.config import failed: {e}")
-    raise
-
-try:
-    from services.vector_service import VectorService
-    print("✅ [DEBUG] VectorService imported successfully")
-except Exception as e:
-    print(f"❌ [DEBUG] VectorService import failed: {e}")
-    print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
-    raise
-
-try:
-    from services.web_search_service import WebSearchService
-    print("✅ [DEBUG] WebSearchService imported successfully")
-except Exception as e:
-    print(f"❌ [DEBUG] WebSearchService import failed: {e}")
-    raise
+from core.models import SearchResult, RAGResponse
+from core.config import get_config, get_prompts
+from services.vector_service import VectorService
+from services.web_search_service import WebSearchService
 
 @dataclass
 class RAGConfig:
@@ -72,11 +34,11 @@ class RAGConfig:
     api_key: str
     temperature: float = 0.7
     max_tokens: int = 1024
-    min_similarity_threshold: float = 0.3
+    min_similarity_threshold: float = 0.1  # Lowered for testing
     search_top_k: int = 5
     # LLM confidence thresholds
     high_confidence_threshold: float = 0.75
-    medium_confidence_threshold: float = 0.30
+    medium_confidence_threshold: float = 0.3  # Lowered for testing
 
 class RAGService:
     """
@@ -97,77 +59,45 @@ class RAGService:
         
         # Load configuration
         print("🔍 [DEBUG] Loading configuration...")
-        try:
-            config = get_config()
-            print("✅ [DEBUG] Configuration loaded successfully")
-        except Exception as e:
-            print(f"❌ [DEBUG] Configuration loading failed: {e}")
-            print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
-            raise
-        
+        config = get_config()
         gemini_api_key = config.gemini_api_key or os.getenv("GEMINI_API_KEY")
-        print(f"🔍 [DEBUG] API key present: {bool(gemini_api_key)}")
         
         if not gemini_api_key:
-            print("❌ [DEBUG] GEMINI_API_KEY not found")
             raise ValueError("GEMINI_API_KEY not found")
         
         # Create RAG configuration
-        print("🔍 [DEBUG] Creating RAG configuration...")
         self.config = RAGConfig(
             model_name=config.model_name or "gemini-1.5-flash",
             api_key=gemini_api_key
         )
-        print(f"✅ [DEBUG] RAG config created with model: {self.config.model_name}")
+        
+        print(f"🔍 [DEBUG] RAG Config thresholds:")
+        print(f"  - min_similarity_threshold: {self.config.min_similarity_threshold}")
+        print(f"  - medium_confidence_threshold: {self.config.medium_confidence_threshold}")
+        print(f"  - high_confidence_threshold: {self.config.high_confidence_threshold}")
         
         # Initialize Gemini AI
         print("🔍 [DEBUG] Initializing Gemini AI...")
-        try:
-            genai.configure(api_key=self.config.api_key)
-            print("✅ [DEBUG] Gemini API configured")
-            
-            self.llm = ChatGoogleGenerativeAI(
-                model=self.config.model_name,
-                google_api_key=self.config.api_key,
-                temperature=self.config.temperature,
-                max_output_tokens=self.config.max_tokens
-            )
-            print("✅ [DEBUG] ChatGoogleGenerativeAI initialized")
-        except Exception as e:
-            print(f"❌ [DEBUG] Gemini AI initialization failed: {e}")
-            print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
-            raise
+        genai.configure(api_key=self.config.api_key)
+        self.llm = ChatGoogleGenerativeAI(
+            model=self.config.model_name,
+            google_api_key=self.config.api_key,
+            temperature=self.config.temperature,
+            max_output_tokens=self.config.max_tokens
+        )
+        print("✅ [DEBUG] Gemini AI initialized")
         
         # Initialize services
         print("🔍 [DEBUG] Initializing vector service...")
-        try:
-            self.vector_service = VectorService()
-            print("✅ [DEBUG] VectorService created")
-        except Exception as e:
-            print(f"❌ [DEBUG] VectorService creation failed: {e}")
-            print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
-            raise
-        
-        print("🔍 [DEBUG] Initializing vector store...")
-        try:
-            init_result = self.vector_service.initialize_vector_store()
-            print(f"✅ [DEBUG] Vector store initialization result: {init_result}")
-        except Exception as e:
-            print(f"❌ [DEBUG] Vector store initialization failed: {e}")
-            print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
-            raise
+        self.vector_service = VectorService()
+        self.vector_service.initialize_vector_store()
+        print("✅ [DEBUG] Vector service initialized")
         
         print("🔍 [DEBUG] Initializing web search service...")
-        try:
-            self.web_search_service = WebSearchService()
-            print("✅ [DEBUG] WebSearchService created")
-        except Exception as e:
-            print(f"❌ [DEBUG] WebSearchService creation failed: {e}")
-            print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
-            raise
+        self.web_search_service = WebSearchService()
+        print("✅ [DEBUG] Web search service initialized")
         
         # Prompt templates for response generation
-        print("🔍 [DEBUG] Setting up prompt templates...")
         self.prompts = {
             'turkish': {
                 'youtube': """Sen, yalnızca aşağıdaki içerikten yola çıkarak, kullanıcının sorusunu Türkçe ve profesyonel bir dille yanıtlayan bir yapay zekâ asistansın.
@@ -242,7 +172,6 @@ Rules:
 Answer:"""
             }
         }
-        print("✅ [DEBUG] Prompt templates set up")
         
         print("✅ [DEBUG] RAG Service initialized successfully")
     
@@ -294,7 +223,10 @@ Answer:"""
     
     def evaluate_response_quality(self, query: str, response: str, language: str) -> float:
         """Evaluate response quality using LLM."""
-        print(f"🔍 [DEBUG] Evaluating response quality for language: {language}")
+        print(f"🔍 [DEBUG] evaluate_response_quality called")
+        print(f"🔍 [DEBUG] Query: '{query[:50]}...'")
+        print(f"🔍 [DEBUG] Response: '{response[:100]}...'")
+        print(f"🔍 [DEBUG] Language: {language}")
         
         try:
             if language == 'turkish':
@@ -320,22 +252,27 @@ Rate from 0.0 (very poor) to 1.0 (excellent).
 
 Return only the number:"""
             
+            print("🔍 [DEBUG] Calling LLM for confidence evaluation...")
             eval_response = self.llm.invoke(eval_prompt)
             confidence_text = eval_response.content.strip()
+            print(f"🔍 [DEBUG] LLM response: '{confidence_text}'")
             
             # Extract confidence score
             numbers = re.findall(r'0\.\d+|1\.0|0\.0', confidence_text)
+            print(f"🔍 [DEBUG] Extracted numbers: {numbers}")
+            
             if numbers:
                 confidence = float(numbers[0])
                 result = max(0.0, min(1.0, confidence))
-                print(f"✅ [DEBUG] Quality evaluation: {result}")
+                print(f"✅ [DEBUG] Final LLM confidence: {result}")
                 return result
             
-            print("⚠️ [DEBUG] No valid confidence score found, using fallback")
+            print("⚠️ [DEBUG] No valid confidence score found, using fallback 0.5")
             return 0.5  # Fallback
             
         except Exception as e:
             print(f"❌ [DEBUG] Error evaluating response quality: {e}")
+            print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
             return 0.5
     
     def generate_response(self, query: str) -> RAGResponse:
@@ -349,7 +286,7 @@ Return only the number:"""
         4. Evaluate response quality with LLM
         5. Return high-quality response or fallback to web search
         """
-        print(f"🔍 [DEBUG] generate_response called with query: '{query}'")
+        print(f"🔍 [DEBUG] generate_response called with: '{query}'")
         
         try:
             # Detect query language
@@ -361,10 +298,11 @@ Return only the number:"""
             youtube_result = self._get_youtube_content(query)
             
             if not youtube_result:
-                print("⚠️ [DEBUG] No YouTube content found, falling back to web search")
+                print("⚠️ [DEBUG] No YouTube content found, going to web search")
                 return self._web_search_fallback(query, query_language)
             
             print(f"✅ [DEBUG] YouTube content found: {youtube_result.video_title[:50]}...")
+            print(f"🔍 [DEBUG] Vector similarity score: {youtube_result.similarity_score}")
             
             # Check language compatibility
             print("🔍 [DEBUG] Checking language compatibility...")
@@ -376,34 +314,39 @@ Return only the number:"""
                 return self._web_search_fallback(query, query_language)
             
             # Check similarity threshold
-            print(f"🔍 [DEBUG] Checking similarity threshold: {youtube_result.similarity_score} vs {self.config.min_similarity_threshold}")
+            print(f"🔍 [DEBUG] Similarity check: {youtube_result.similarity_score} >= {self.config.min_similarity_threshold}")
             if youtube_result.similarity_score < self.config.min_similarity_threshold:
-                print("⚠️ [DEBUG] Similarity below threshold, falling back to web search")
+                print("⚠️ [DEBUG] Similarity below threshold, going to web search")
                 return self._web_search_fallback(query, query_language)
             
             # Generate RAG response
-            print("🔍 [DEBUG] Generating RAG answer from YouTube content...")
+            print("🔍 [DEBUG] Generating RAG answer...")
             rag_answer = self._generate_youtube_answer(query, youtube_result, query_language)
-            print(f"✅ [DEBUG] RAG answer generated: {rag_answer[:100]}...")
+            print(f"✅ [DEBUG] RAG answer: '{rag_answer[:100]}...'")
             
-            # Evaluate response quality using LLM
-            print("🔍 [DEBUG] Evaluating response quality...")
+            # THE CRITICAL PART: Evaluate response quality using LLM
+            print("🔍 [DEBUG] *** EVALUATING LLM CONFIDENCE ***")
             llm_confidence = self.evaluate_response_quality(query, rag_answer, query_language)
+            print(f"🔍 [DEBUG] *** LLM CONFIDENCE RESULT: {llm_confidence} ***")
             
             # Decision based on LLM confidence
-            print(f"🔍 [DEBUG] LLM confidence: {llm_confidence} vs medium threshold: {self.config.medium_confidence_threshold}")
+            print(f"🔍 [DEBUG] *** CONFIDENCE DECISION ***")
+            print(f"🔍 [DEBUG] LLM confidence: {llm_confidence}")
+            print(f"🔍 [DEBUG] Medium threshold: {self.config.medium_confidence_threshold}")
+            print(f"🔍 [DEBUG] Passes threshold: {llm_confidence >= self.config.medium_confidence_threshold}")
+            
             if llm_confidence >= self.config.medium_confidence_threshold:
                 # High or medium confidence - use RAG response
-                print("✅ [DEBUG] High/medium confidence, using RAG response")
+                print("✅ [DEBUG] *** USING RAG RESPONSE (HIGH CONFIDENCE) ***")
                 return RAGResponse(
                     query=query,
                     answer=rag_answer,
                     sources=[youtube_result],
-                    confidence_score=llm_confidence
+                    confidence_score=llm_confidence  # THIS should be the LLM confidence, not similarity
                 )
             else:
                 # Low confidence - fallback to web search
-                print("⚠️ [DEBUG] Low confidence, falling back to web search")
+                print("⚠️ [DEBUG] *** FALLING BACK TO WEB SEARCH (LOW CONFIDENCE) ***")
                 return self._web_search_fallback(query, query_language)
             
         except Exception as e:
@@ -424,7 +367,7 @@ Return only the number:"""
     
     def _get_youtube_content(self, query: str) -> Optional[SearchResult]:
         """Get best YouTube content from vector search."""
-        print(f"🔍 [DEBUG] _get_youtube_content called with query: '{query}'")
+        print(f"🔍 [DEBUG] _get_youtube_content called with: '{query}'")
         try:
             search_results = self.vector_service.search(query, top_k=self.config.search_top_k)
             result = search_results[0] if search_results else None
@@ -497,14 +440,14 @@ Return only the number:"""
                     video_title=web_result.title,
                     video_url=web_result.url,
                     text_content=web_result.snippet,
-                    similarity_score=web_confidence
+                    similarity_score=web_confidence  # This will be the LLM confidence for web results
                 )
                 
                 return RAGResponse(
                     query=query,
                     answer=web_answer,
                     sources=[web_search_result],
-                    confidence_score=web_confidence
+                    confidence_score=web_confidence  # LLM confidence, not similarity
                 )
             
             # No content found anywhere
