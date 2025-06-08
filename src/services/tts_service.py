@@ -1,4 +1,4 @@
-# src/services/simple_tts_service.py
+# src/services/tts_service.py
 """Simple and efficient TTS service using ElevenLabs API."""
 
 import os
