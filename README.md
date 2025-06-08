@@ -311,21 +311,6 @@ streamlit run app.py --server.runOnSave true
 - **Language Matching**: Queries matched with appropriate language content
 - **Context Relevance**: Advanced embedding models for semantic understanding
 
-## Manual Testing
-
-You can test individual components by running the service files directly:
-
-```bash
-# Test search functionality
-python src/services/vector_service.py
-
-# Test transcription
-python src/services/transcription_service.py
-
-# Test YouTube download
-python src/services/youtube_service.py
-```
-
 ## Security & Privacy
 
 ### API Key Management
@@ -359,23 +344,6 @@ python src/services/youtube_service.py
 - Confidence score distribution
 - Source attribution statistics
 - TTS usage patterns
-
-## Future Enhancements
-
-### Planned Features
-- [ ] Multi-language content expansion
-- [ ] Advanced conversation memory
-- [ ] Custom voice training
-- [ ] Real-time content updates
-- [ ] Analytics dashboard
-- [ ] Mobile app version
-
-### Technical Improvements
-- [ ] Distributed vector database
-- [ ] Advanced caching strategies
-- [ ] A/B testing framework
-- [ ] Performance optimization
-- [ ] Enhanced monitoring
 
 ## Contributing
 
