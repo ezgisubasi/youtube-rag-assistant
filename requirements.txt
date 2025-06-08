@@ -13,3 +13,4 @@ sentence-transformers
 torch
 requests
 duckduckgo-search
+elevenlabs
