@@ -134,7 +134,7 @@ def main():
         if not validate_config():
             st.error("Configuration error - Check your API keys")
             return
-        st.success("✅ Configuration valid")
+        st.success("Configuration valid")
         
         # Load services
         if not st.session_state.rag_service:
@@ -147,13 +147,13 @@ def main():
             
             st.session_state.rag_service = rag_service
             st.session_state.tts_service = tts_service
-            st.success("✅ Services loaded")
+            st.success("Services loaded")
         
         # TTS settings
         st.subheader("🔊 Text-to-Speech")
         if st.session_state.tts_service and st.session_state.tts_service.is_available():
             use_tts = st.checkbox("Enable TTS", value=True)
-            st.success("✅ TTS Ready")
+            st.success("TTS Ready")
         else:
             use_tts = False
             st.warning("⚠️ TTS unavailable (API key needed)")
