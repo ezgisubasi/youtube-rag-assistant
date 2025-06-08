@@ -98,12 +98,11 @@ def initialize_session_state():
     if "conversation_count" not in st.session_state:
         st.session_state.conversation_count = 0
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def load_rag_service():
     """Load RAG service with caching."""
     try:
-        with st.spinner("Initializing RAG Service..."):
-            service = RAGService()
+        service = RAGService()
         return service, None
     except Exception as e:
         error_msg = f"RAG Service initialization failed: {str(e)}"
@@ -234,15 +233,15 @@ def main():
                 try:
                     # Test vector search
                     test_results = st.session_state.rag_service.vector_service.search("test", top_k=1)
-                    st.write(f"Vector DB has {len(test_results)} documents")
+                    st.write(f"✅ Vector DB has {len(test_results)} documents")
                     
                     # Test web search
                     web_result = st.session_state.rag_service.web_search_service.search("test")
-                    st.write(f"Web search working: {web_result is not None}")
+                    st.write(f"✅ Web search working: {web_result is not None}")
                     
                     # Test simple response
                     response = st.session_state.rag_service.generate_response("Hello")
-                    st.write(f"Response: {response.answer[:100]}...")
+                    st.write(f"✅ Response: {response.answer[:100]}...")
                     
                 except Exception as e:
                     st.error(f"System test error: {e}")
