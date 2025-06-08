@@ -29,7 +29,7 @@ A professional AI-powered chatbot that provides intelligent responses using YouT
 - **Professional UI**: Clean, modern interface with dark theme
 - **Real-time Processing**: Fast response generation with progress indicators
 
-## Examples of Live Demo
+## Live Demo Examples
 
 ![YouTube RAG Assistant Interface](images/chatbot-test-1.png)
 ![YouTube RAG Assistant Interface](images/chatbot-test-2.png)
