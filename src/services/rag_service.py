@@ -33,7 +33,6 @@ class RAGConfig:
     api_key: str
     temperature: float = 0.7
     max_tokens: int = 1024
-    search_top_k: int = 5
     # Only LLM confidence threshold
     confidence_threshold: float = 0.3
 
@@ -42,7 +41,7 @@ class RAGService:
     Simplified RAG service with only LLM confidence evaluation.
     
     Flow:
-    1. Get YouTube content (any content is fine)
+    1. Get single best YouTube content
     2. Generate answer from content
     3. LLM evaluates answer quality
     4. If confidence >= 0.3 → use answer
@@ -261,8 +260,8 @@ Return only the number:"""
             query_language = self.detect_language(query)
             print(f"✅ [DEBUG] Query language: {query_language}")
             
-            # Get YouTube content (any content is fine, no similarity threshold)
-            youtube_result = self._get_youtube_content(query)
+            # Get single best YouTube content
+            youtube_result = self._get_best_youtube_content(query)
             
             if not youtube_result:
                 print("⚠️ [DEBUG] No YouTube content found, going to web search")
@@ -320,10 +319,11 @@ Return only the number:"""
                 confidence_score=0.0
             )
     
-    def _get_youtube_content(self, query: str) -> Optional[SearchResult]:
-        """Get best YouTube content from vector search."""
+    def _get_best_youtube_content(self, query: str) -> Optional[SearchResult]:
+        """Get single best YouTube content from vector search."""
         try:
-            search_results = self.vector_service.search(query, top_k=self.config.search_top_k)
+            # Get only the top 1 result (best match)
+            search_results = self.vector_service.search(query, top_k=1)
             return search_results[0] if search_results else None
         except Exception as e:
             print(f"❌ [DEBUG] YouTube search error: {e}")
