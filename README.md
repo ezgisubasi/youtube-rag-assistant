@@ -262,6 +262,7 @@ The system evaluates each response using LLM confidence scoring:
    ```toml
    GEMINI_API_KEY = "your_api_key"
    ELEVENLABS_API_KEY = "your_elevenlabs_key"
+   HF_TOKEN="your_huggingface_api_key"
    ```
 4. Deploy automatically
 
@@ -274,6 +275,7 @@ docker build -t youtube-rag-assistant .
 docker run -p 8501:8501 \
   -e GEMINI_API_KEY="your_key" \
   -e ELEVENLABS_API_KEY="your_elevenlabs_key" \
+  -e HF_TOKEN="your_huggingface_api_key" \
   youtube-rag-assistant
 ```
 
@@ -319,7 +321,7 @@ python src/services/youtube_service.py
 ## Security & Privacy
 
 ### API Key Management
-- Environment variable based configuration
+- Environment variable-based configuration
 - No hardcoded secrets in repository
 - Streamlit secrets integration for cloud deployment
 
