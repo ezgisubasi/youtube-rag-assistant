@@ -1,10 +1,11 @@
 # YouTube RAG Assistant
 
-A sophisticated AI-powered chatbot that provides intelligent responses using YouTube video content as a knowledge base, with advanced Text-to-Speech capabilities. Built with modern RAG (Retrieval-Augmented Generation) architecture and deployed on Streamlit Cloud.
-
-![YouTube RAG Assistant Interface](images/chatbot-interface.png)
+A professional AI-powered chatbot that provides intelligent responses using YouTube video content as a knowledge base, with advanced Text-to-Speech capabilities. Built with modern RAG (Retrieval-Augmented Generation) architecture and deployed on Streamlit Cloud.
 
 ## Live Demo
+
+![YouTube RAG Assistant Interface](images/chatbot-test-1.png)
+![YouTube RAG Assistant Interface](images/chatbot-test-2.png)
 
 **Status:** Currently deployed and running on Streamlit Cloud
 
@@ -33,8 +34,6 @@ A sophisticated AI-powered chatbot that provides intelligent responses using You
 - **Professional UI**: Clean, modern interface with dark theme
 - **Real-time Processing**: Fast response generation with progress indicators
 
-![Chat Example](images/chat-example.png)
-
 ## Architecture
 
 ```
@@ -53,7 +52,7 @@ YouTube Playlist → Audio Download → Transcription → Vector Store → RAG �
 3. **Content Retrieval**: Extract best matching video content
 4. **Response Generation**: Create contextual answer using Gemini AI
 5. **Quality Evaluation**: LLM confidence scoring (0.0-1.0)
-6. **Fallback Logic**: Web search if confidence < 0.3
+6. **Fallback Logic**: Web search if confidence < 0.5
 7. **Source Attribution**: Add video links and confidence scores
 
 ## Project Structure
