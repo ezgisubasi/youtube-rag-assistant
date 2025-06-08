@@ -1,4 +1,4 @@
-""" YouTube RAG Assistant with Simple TTS """
+""" YouTube RAG Assistant with Text-To-Speech Service using ElevenLabs API """
 
 import os
 os.environ["TORCH_DISABLE_DYNAMO"] = "1"
@@ -29,9 +29,22 @@ st.set_page_config(
     layout="wide"
 )
 
-# Simple CSS
+# Updated CSS with centered title and subtitle
 st.markdown("""
 <style>
+    .main-title {
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #64b5f6;
+        margin-bottom: 0.5rem;
+    }
+    .main-subtitle {
+        text-align: center;
+        font-size: 1.2rem;
+        color: #b0b0b0;
+        margin-bottom: 2rem;
+    }
     .source-info {
         background-color: #2d2d2d;
         padding: 1rem;
@@ -109,8 +122,9 @@ def display_message(message, tts_service, use_tts):
 
 def main():
     """Main app."""
-    st.title("🎥 YouTube RAG Assistant")
-    st.markdown("AI-powered guidance from YouTube content with voice responses!")
+    # Centered title and subtitle
+    st.markdown('<h1 class="main-title">🎥 YouTube RAG Assistant</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="main-subtitle">AI-powered guidance from YouTube content with voice responses!</p>', unsafe_allow_html=True)
 
     # Sidebar
     with st.sidebar:
