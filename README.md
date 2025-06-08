@@ -38,14 +38,14 @@ A sophisticated AI-powered chatbot that provides intelligent responses using You
 ## Architecture
 
 ```
-YouTube Playlist → Audio Download → Transcription → Vector Store → RAG → TTS → Web Interface
-     ↓                   ↓             ↓              ↓             ↓     ↓         ↓
-  pytubefix        OpenAI Whisper    BGE-M3         Qdrant    Gemini AI  Elevenlabs Streamlit
-                                                      ↓
-                                                  Web Search Fallback
-                                                      ↓
-                                                    DuckDuckGo API
-```     
+YouTube Playlist → Audio Download → Transcription → Vector Store → RAG → Web Interface
+     ↓                   ↓             ↓            ↓               ↓         ↓
+  pytubefix        OpenAI Whisper    BGE-M3       Qdrant         Gemini AI  Streamlit
+                                                     ↓
+                                             Web Search Fallback
+                                                     ↓
+                                               DuckDuckGo API
+```
 
 ### RAG Pipeline Flow
 1. **Query Processing**: Language detection and intent analysis
@@ -53,7 +53,7 @@ YouTube Playlist → Audio Download → Transcription → Vector Store → RAG �
 3. **Content Retrieval**: Extract best matching video content
 4. **Response Generation**: Create contextual answer using Gemini AI
 5. **Quality Evaluation**: LLM confidence scoring (0.0-1.0)
-6. **Fallback Logic**: Web search if confidence < 0.5
+6. **Fallback Logic**: Web search if confidence < 0.3
 7. **Source Attribution**: Add video links and confidence scores
 
 ## Project Structure
@@ -132,7 +132,6 @@ cp .env.template .env
 
 # Add your API keys
 export GEMINI_API_KEY="your_gemini_api_key_here"
-export HF_TOKEN="your_hf_token"
 export ELEVENLABS_API_KEY="your_elevenlabs_api_key_here"  # Optional for TTS
 ```
 
@@ -152,9 +151,6 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 # Optional (for TTS features)
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-
-# Huggingface API Token
-HF_TOKEN=your_hf_token
 
 # Optional (override default playlist)
 YOUTUBE_PLAYLIST_URL=https://youtube.com/playlist?list=your_playlist_id
@@ -249,25 +245,24 @@ The system evaluates each response using LLM confidence scoring:
 1. Search YouTube transcripts → Generate response
 2. LLM evaluates response quality → Confidence score
 3. If low confidence → Web search fallback
-4. Return the best response with source attribution
+4. Return best response with source attribution
 ```
 
 ### Professional TTS Integration
 - **Voice Quality**: ElevenLabs multilingual voice synthesis
 - **Performance**: Optimized audio streaming
 - **Accessibility**: One-click speech generation
-- **Fallback**: Graceful degradation when TTS is unavailable
+- **Fallback**: Graceful degradation when TTS unavailable
 
 ## Deployment
 
 ### Streamlit Cloud (Recommended)
-1. Push code to the GitHub repository
+1. Push code to GitHub repository
 2. Connect to Streamlit Cloud
-3. Set secrets in the Streamlit dashboard:
+3. Set secrets in Streamlit dashboard:
    ```toml
    GEMINI_API_KEY = "your_api_key"
    ELEVENLABS_API_KEY = "your_elevenlabs_key"
-   HF_TOKEN "your_hf_token"
    ```
 4. Deploy automatically
 
@@ -293,7 +288,7 @@ streamlit run app.py --server.runOnSave true
 
 ### Response Quality
 - **YouTube Knowledge**: High-quality responses from curated content
-- **Web Fallback**: Real-time information when the knowledge base is insufficient
+- **Web Fallback**: Real-time information when knowledge base is insufficient
 - **Confidence Scoring**: Transparent quality metrics for each response
 
 ### Speed Benchmarks
@@ -303,25 +298,14 @@ streamlit run app.py --server.runOnSave true
 - **Total Response Time**: ~3-8s end-to-end
 
 ### Accuracy Features
-- **Source Attribution**: Every response is linked to the original video
+- **Source Attribution**: Every response linked to original video
 - **Language Matching**: Queries matched with appropriate language content
 - **Context Relevance**: Advanced embedding models for semantic understanding
 
-## Testing
+## Manual Testing
 
-### Unit Tests
-```bash
-# Test vector service
-python -m pytest tests/test_vector_service.py
+You can test individual components by running the service files directly:
 
-# Test RAG service
-python -m pytest tests/test_rag_service.py
-
-# Test TTS service
-python -m pytest tests/test_tts_service.py
-```
-
-### Manual Testing
 ```bash
 # Test search functionality
 python src/services/vector_service.py
@@ -336,8 +320,8 @@ python src/services/youtube_service.py
 ## Security & Privacy
 
 ### API Key Management
-- Environment variable-based configuration
-- No hardcoded secrets in the repository
+- Environment variable based configuration
+- No hardcoded secrets in repository
 - Streamlit secrets integration for cloud deployment
 
 ### Data Privacy
@@ -389,7 +373,7 @@ python src/services/youtube_service.py
 ### Development Setup
 ```bash
 # Clone repository
-git clone https://github.com/ezgisubasi/youtube-rag-assistant.git
+git clone https://github.com/yourusername/youtube-rag-assistant.git
 
 # Create virtual environment
 python -m venv venv
@@ -398,7 +382,6 @@ venv\Scripts\activate     # Windows
 
 # Install development dependencies
 pip install -r requirements.txt
-pip install -r requirements-dev.txt
 ```
 
 ### Code Standards
