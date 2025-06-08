@@ -6,7 +6,7 @@ import requests
 import base64
 from typing import Optional
 
-class SimpleTTSService:
+class TTSService:
     """Simple ElevenLabs TTS service."""
     
     def __init__(self):
