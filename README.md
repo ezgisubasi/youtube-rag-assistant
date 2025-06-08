@@ -131,6 +131,7 @@ cp .env.template .env
 
 # Add your API keys
 export GEMINI_API_KEY="your_gemini_api_key_here"
+export HF_TOKEN="your_huggingface_api_key_here"
 export ELEVENLABS_API_KEY="your_elevenlabs_api_key_here"  # Optional for TTS
 ```
 
@@ -147,6 +148,7 @@ The application will be available at `http://localhost:8501`
 ```bash
 # Required
 GEMINI_API_KEY=your_gemini_api_key_here
+HF_TOKEN=your_huggingface_api_key_here
 
 # Optional (for TTS features)
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
@@ -234,8 +236,8 @@ for result in results:
 
 ### Confidence-Based Response System
 The system evaluates each response using LLM confidence scoring:
-- **High Confidence (≥0.3)**: Uses YouTube knowledge base response
-- **Low Confidence (<0.3)**: Automatically falls back to web search
+- **High Confidence (≥0.5)**: Uses YouTube knowledge base response
+- **Low Confidence (<0.5)**: Automatically falls back to web search
 - **Transparent Scoring**: Shows confidence level for each response
 
 ### Multi-Source Intelligence
@@ -261,8 +263,8 @@ The system evaluates each response using LLM confidence scoring:
 3. Set secrets in Streamlit dashboard:
    ```toml
    GEMINI_API_KEY = "your_api_key"
-   ELEVENLABS_API_KEY = "your_elevenlabs_key"
    HF_TOKEN="your_huggingface_api_key"
+   ELEVENLABS_API_KEY = "your_elevenlabs_key"
    ```
 4. Deploy automatically
 
@@ -274,8 +276,8 @@ docker build -t youtube-rag-assistant .
 # Run container
 docker run -p 8501:8501 \
   -e GEMINI_API_KEY="your_key" \
-  -e ELEVENLABS_API_KEY="your_elevenlabs_key" \
   -e HF_TOKEN="your_huggingface_api_key" \
+  -e ELEVENLABS_API_KEY="your_elevenlabs_key" \
   youtube-rag-assistant
 ```
 
