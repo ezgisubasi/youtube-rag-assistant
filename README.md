@@ -2,11 +2,6 @@
 
 A professional AI-powered chatbot that provides intelligent responses using YouTube video content as a knowledge base, with advanced Text-to-Speech capabilities. Built with modern RAG (Retrieval-Augmented Generation) architecture and deployed on Streamlit Cloud.
 
-## Live Demo
-
-![YouTube RAG Assistant Interface](images/chatbot-test-1.png)
-![YouTube RAG Assistant Interface](images/chatbot-test-2.png)
-
 **Status:** Currently deployed and running on Streamlit Cloud
 
 > Note: This is a private deployment. To run your instance, follow the setup instructions below.
@@ -34,16 +29,21 @@ A professional AI-powered chatbot that provides intelligent responses using YouT
 - **Professional UI**: Clean, modern interface with dark theme
 - **Real-time Processing**: Fast response generation with progress indicators
 
+## Examples of Live Demo
+
+![YouTube RAG Assistant Interface](images/chatbot-test-1.png)
+![YouTube RAG Assistant Interface](images/chatbot-test-2.png)
+
 ## Architecture
 
 ```
-YouTube Playlist → Audio Download → Transcription → Vector Store → RAG → Web Interface
-     ↓                   ↓             ↓            ↓               ↓         ↓
-  pytubefix        OpenAI Whisper    BGE-M3       Qdrant         Gemini AI  Streamlit
-                                                     ↓
-                                             Web Search Fallback
-                                                     ↓
-                                               DuckDuckGo API
+YouTube Playlist → Audio Download → Transcription → Vector Store → RAG → TTS → Web Interface
+     ↓                   ↓             ↓              ↓             ↓     ↓         ↓
+  pytubefix        OpenAI Whisper    BGE-M3         Qdrant    Gemini AI  Elevenlabs Streamlit
+                                                      ↓
+                                                  Web Search Fallback
+                                                      ↓
+                                                    DuckDuckGo API
 ```
 
 ### RAG Pipeline Flow
