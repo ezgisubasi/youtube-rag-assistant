@@ -238,29 +238,6 @@ for query in test_queries:
         print(f"  - {source.video_title}: {source.similarity_score:.3f}")
         print(f"    URL: {source.video_url}")
 
-## Question Examples
-
-### Business Leadership Queries
-```
-• "Nasıl etkili lider olunur?" (How to become an effective leader?)
-• "Takım motivasyonu için stratejiler nelerdir?" (What are strategies for team motivation?)
-• "Başarılı girişimcilik ilkeleri" (Successful entrepreneurship principles)
-```
-
-### Personal Development
-```
-• "Zaman yönetimi teknikleri" (Time management techniques)
-• "Stres yönetimi yöntemleri" (Stress management methods)
-• "Karar verme süreçleri" (Decision-making processes)
-```
-
-### Business Strategy
-```
-• "Dijital dönüşüm stratejileri" (Digital transformation strategies)
-• "Müşteri deneyimi iyileştirme" (Customer experience improvement)
-• "İnovasyon yönetimi" (Innovation management)
-```
-
 ## Advanced Features
 
 ### Confidence-Based Response System
