@@ -1,5 +1,5 @@
 # src/services/vector_service.py
-"""Vector service using QdrantVectorStore and HuggingFace Embeddings based on transcripts."""
+"""Vector service using LangChain, QdrantVectorStore and HuggingFace Embeddings based on transcripts."""
 
 import json
 from typing import List
