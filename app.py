@@ -1,14 +1,26 @@
 """ A specialized AI chatbot that provides leadership guidance using YouTube video content."""
 
+# Fix for PyTorch + Streamlit Cloud compatibility
+import os
+os.environ["TORCH_DISABLE_DYNAMO"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 print("🔍 [DEBUG] Starting app.py")
 
 import streamlit as st
 import sys
-import os
 from pathlib import Path
 import time
 from datetime import datetime
 import traceback
+
+# Fix PyTorch JIT issues
+try:
+    import torch
+    torch.jit.set_fuser("none")
+    print("✅ [DEBUG] PyTorch compatibility fixes applied")
+except:
+    print("⚠️ [DEBUG] PyTorch not available or fix failed")
 
 print("✅ [DEBUG] Basic imports completed")
 
@@ -50,6 +62,7 @@ except ImportError as e:
     st.stop()
 
 print("✅ [DEBUG] All imports completed successfully")
+
 
 # Page configuration
 print("🔍 [DEBUG] Setting up Streamlit page config...")
