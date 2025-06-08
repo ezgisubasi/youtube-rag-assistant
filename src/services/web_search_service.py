@@ -1,10 +1,13 @@
 # src/services/web_search_service.py
-"""Web search service using LangChain DuckDuckGo search."""
+"""Improved web search service with multiple fallback options for Streamlit Cloud."""
 
-from typing import Optional
+from typing import Optional, List
 from dataclasses import dataclass
 import sys
 from pathlib import Path
+import json
+import time
+import random
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -17,172 +20,222 @@ class WebSearchResult:
     snippet: str
 
 class WebSearchService:
-    """Web search service using LangChain DuckDuckGo."""
+    """Robust web search service with multiple fallback options."""
 
     def __init__(self):
-        """Initialize web search service."""
+        """Initialize web search service with multiple options."""
+        self.search_tools = []
+        self._initialize_search_tools()
+        
+        # User agents for rotation
+        self.user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ]
+
+    def _initialize_search_tools(self):
+        """Initialize available search tools in order of preference."""
+        
+        # Method 1: DuckDuckGo Search (most reliable)
+        try:
+            from duckduckgo_search import DDGS
+            self.search_tools.append(('ddgs', DDGS()))
+            print("✅ DuckDuckGo Search (ddgs) initialized")
+        except ImportError:
+            print("⚠️ duckduckgo-search not available")
+        
+        # Method 2: LangChain DuckDuckGo
         try:
             from langchain_community.tools import DuckDuckGoSearchRun
-            self.search_tool = DuckDuckGoSearchRun()
-            print("Web Search Service initialized with LangChain DuckDuckGo")
+            self.search_tools.append(('langchain_ddg', DuckDuckGoSearchRun()))
+            print("✅ LangChain DuckDuckGo initialized")
         except ImportError:
-            print("Warning: LangChain DuckDuckGo not available, falling back to manual search")
-            self.search_tool = None
+            print("⚠️ LangChain DuckDuckGo not available")
+        
+        # Method 3: Requests-based fallback
+        try:
             import requests
             self.requests = requests
-            self.headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
+            self.search_tools.append(('requests', 'requests_fallback'))
+            print("✅ Requests fallback initialized")
+        except ImportError:
+            print("⚠️ Requests not available")
+        
+        if not self.search_tools:
+            print("❌ No search tools available!")
+        else:
+            print(f"✅ Initialized {len(self.search_tools)} search methods")
 
-    def search(self, query: str) -> Optional[WebSearchResult]:
-        """Search web and return the top result."""
-        try:
-            print(f"Searching web for: {query}")
+    def search(self, query: str, max_results: int = 3) -> Optional[WebSearchResult]:
+        """Search web using available tools with fallbacks."""
+        print(f"🔍 Searching for: '{query}'")
+        
+        # Try each search tool in order
+        for tool_name, tool in self.search_tools:
+            print(f"🔄 Trying {tool_name}...")
             
-            if self.search_tool:
-                # Use LangChain DuckDuckGo
-                result = self._search_with_langchain(query)
+            try:
+                result = self._search_with_tool(tool_name, tool, query, max_results)
                 if result:
-                    print(f"Found result via LangChain: {result.title}")
+                    print(f"✅ Success with {tool_name}: {result.title[:50]}...")
                     return result
-            
-            # Fallback to manual search
-            result = self._manual_search_fallback(query)
-            if result:
-                print(f"Found result via fallback: {result.title}")
-                return result
-            
-            print("No search results found")
-            return None
-            
-        except Exception as e:
-            print(f"Web search error: {e}")
-            return None
+                else:
+                    print(f"⚠️ {tool_name} returned no results")
+            except Exception as e:
+                print(f"❌ {tool_name} failed: {e}")
+                continue
+        
+        print("❌ All search methods failed")
+        return None
 
-    def _search_with_langchain(self, query: str) -> Optional[WebSearchResult]:
-        """Search using LangChain DuckDuckGo tool."""
+    def _search_with_tool(self, tool_name: str, tool, query: str, max_results: int) -> Optional[WebSearchResult]:
+        """Search with a specific tool."""
+        
+        if tool_name == 'ddgs':
+            return self._search_with_ddgs(tool, query, max_results)
+        elif tool_name == 'langchain_ddg':
+            return self._search_with_langchain(tool, query)
+        elif tool_name == 'requests':
+            return self._search_with_requests(query)
+        
+        return None
+
+    def _search_with_ddgs(self, ddgs, query: str, max_results: int) -> Optional[WebSearchResult]:
+        """Search using duckduckgo-search library (most reliable)."""
         try:
-            # Get search results from LangChain
-            search_results = self.search_tool.run(query)
+            # Add small delay to avoid rate limiting
+            time.sleep(random.uniform(0.5, 1.5))
             
-            if search_results and len(search_results) > 50:  # Ensure we got meaningful results
-                # Parse the search results text
-                lines = search_results.split('\n')
-                
-                title = ""
-                url = ""
-                snippet = ""
-                
-                for line in lines:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    
-                    # Look for title (usually first meaningful line)
-                    if not title and len(line) > 10 and not line.startswith('http'):
-                        title = line
-                    
-                    # Look for URL
-                    elif line.startswith('http') and not url:
-                        url = line
-                    
-                    # Look for snippet (content after title and URL)
-                    elif title and url and len(line) > 20:
-                        snippet = line
-                        break
-                
-                # If we found good components, return result
-                if title and url and snippet:
-                    return WebSearchResult(
-                        title=self._clean_text(title),
-                        url=url.strip(),
-                        snippet=self._clean_text(snippet)[:300] + "..." if len(snippet) > 300 else self._clean_text(snippet)
-                    )
-                
-                # Alternative parsing: treat entire result as snippet and extract URL
-                elif search_results:
-                    # Extract first URL from the text
-                    import re
-                    urls = re.findall(r'https?://[^\s]+', search_results)
-                    if urls:
-                        url = urls[0]
-                        # Use the first meaningful line as title
-                        first_line = search_results.split('\n')[0].strip()
-                        title = first_line if len(first_line) > 10 else query
-                        # Use first 200 chars as snippet
-                        snippet = search_results[:200] + "..."
-                        
-                        return WebSearchResult(
-                            title=self._clean_text(title),
-                            url=url,
-                            snippet=self._clean_text(snippet)
-                        )
+            # Use the text search method
+            results = list(ddgs.text(
+                keywords=query,
+                max_results=max_results,
+                region='wt-wt',  # Global search
+                safesearch='moderate',
+                timelimit=None
+            ))
+            
+            if results:
+                # Get the first result
+                result = results[0]
+                return WebSearchResult(
+                    title=self._clean_text(result.get('title', '')),
+                    url=result.get('href', ''),
+                    snippet=self._clean_text(result.get('body', ''))
+                )
             
             return None
             
         except Exception as e:
-            print(f"LangChain DuckDuckGo search error: {e}")
+            print(f"DDGS search error: {e}")
             return None
 
-    def _manual_search_fallback(self, query: str) -> Optional[WebSearchResult]:
-        """Fallback manual search if LangChain fails."""
+    def _search_with_langchain(self, tool, query: str) -> Optional[WebSearchResult]:
+        """Search using LangChain DuckDuckGo."""
         try:
-            if not hasattr(self, 'requests'):
-                return None
-                
-            # Simple DuckDuckGo lite search
-            url = "https://lite.duckduckgo.com/lite/"
-            params = {'q': query}
+            # Add delay
+            time.sleep(random.uniform(0.5, 1.0))
             
-            response = self.requests.get(url, params=params, headers=self.headers, timeout=10)
+            search_results = tool.run(query)
+            
+            if search_results and len(search_results) > 50:
+                # Parse the results
+                return self._parse_langchain_results(search_results, query)
+            
+            return None
+            
+        except Exception as e:
+            print(f"LangChain search error: {e}")
+            return None
+
+    def _search_with_requests(self, query: str) -> Optional[WebSearchResult]:
+        """Fallback search using requests."""
+        try:
+            import requests
+            from urllib.parse import quote
+            
+            # Add delay
+            time.sleep(random.uniform(1.0, 2.0))
+            
+            # Use DuckDuckGo instant answer API
+            headers = {
+                'User-Agent': random.choice(self.user_agents)
+            }
+            
+            # Try DuckDuckGo instant answer API first
+            instant_url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
+            
+            response = requests.get(instant_url, headers=headers, timeout=10)
             
             if response.status_code == 200:
-                html = response.text
-                import re
+                data = response.json()
                 
-                # Simple pattern for DuckDuckGo lite
-                pattern = r'<td><a[^>]*href="(https?://[^"]+)"[^>]*>([^<]+)</a></td><td>([^<]+)</td>'
-                match = re.search(pattern, html, re.DOTALL)
+                # Check for instant answer
+                if data.get('AbstractText') and data.get('AbstractURL'):
+                    return WebSearchResult(
+                        title=data.get('Heading', query),
+                        url=data.get('AbstractURL', ''),
+                        snippet=self._clean_text(data.get('AbstractText', ''))
+                    )
                 
-                if match:
-                    url_found, title, snippet = match.groups()
-                    
-                    # Clean and validate
-                    url_found = self._clean_url(url_found)
-                    title = self._clean_text(title)
-                    snippet = self._clean_text(snippet)
-                    
-                    if self._is_valid_url(url_found) and len(title) > 3:
-                        return WebSearchResult(
-                            title=title,
-                            url=url_found,
-                            snippet=snippet[:300] + "..." if len(snippet) > 300 else snippet
-                        )
+                # Check for related topics
+                if data.get('RelatedTopics'):
+                    for topic in data.get('RelatedTopics', [])[:1]:
+                        if isinstance(topic, dict) and topic.get('Text') and topic.get('FirstURL'):
+                            return WebSearchResult(
+                                title=topic.get('Text', query)[:100],
+                                url=topic.get('FirstURL', ''),
+                                snippet=self._clean_text(topic.get('Text', ''))
+                            )
             
             return None
             
         except Exception as e:
-            print(f"Manual search fallback error: {e}")
+            print(f"Requests search error: {e}")
             return None
 
-    def _clean_url(self, url: str) -> str:
-        """Clean URL from redirects."""
-        if not url:
-            return ""
-        
-        # Handle DuckDuckGo redirects
-        if '/l/?uddg=' in url:
-            try:
-                from urllib.parse import unquote
-                import re
-                decoded = unquote(url)
-                match = re.search(r'https?://[^&\s"\']+', decoded)
-                if match:
-                    return match.group(0)
-            except:
-                pass
-        
-        return url.strip()
+    def _parse_langchain_results(self, search_results: str, query: str) -> Optional[WebSearchResult]:
+        """Parse LangChain search results."""
+        try:
+            lines = [line.strip() for line in search_results.split('\n') if line.strip()]
+            
+            title = ""
+            url = ""
+            snippet = ""
+            
+            # Look for patterns in the results
+            import re
+            
+            # Extract URLs
+            urls = re.findall(r'https?://[^\s]+', search_results)
+            if urls:
+                url = urls[0]
+            
+            # Get first meaningful line as title
+            for line in lines:
+                if len(line) > 10 and not line.startswith('http') and not any(char in line for char in ['[', ']', '{']):
+                    title = line
+                    break
+            
+            # Get longer text as snippet
+            for line in lines:
+                if len(line) > 50 and line != title:
+                    snippet = line
+                    break
+            
+            if title and url:
+                return WebSearchResult(
+                    title=self._clean_text(title),
+                    url=url,
+                    snippet=self._clean_text(snippet) if snippet else self._clean_text(title)
+                )
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error parsing LangChain results: {e}")
+            return None
 
     def _clean_text(self, text: str) -> str:
         """Clean and normalize text."""
@@ -190,26 +243,83 @@ class WebSearchService:
             return ""
         
         import re
+        
         # Remove HTML tags
         text = re.sub(r'<[^>]+>', '', text)
+        
         # Decode HTML entities
-        text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-        text = text.replace('&quot;', '"').replace('&#39;', "'").replace('&nbsp;', ' ')
-        # Normalize whitespace
+        html_entities = {
+            '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
+            '&#39;': "'", '&nbsp;': ' ', '&apos;': "'", '&copy;': '©'
+        }
+        for entity, char in html_entities.items():
+            text = text.replace(entity, char)
+        
+        # Remove extra whitespace
         text = re.sub(r'\s+', ' ', text)
+        
+        # Remove special characters that might cause issues
+        text = re.sub(r'[^\w\s\-.,!?()&:;/]', '', text)
+        
         return text.strip()
 
-    def _is_valid_url(self, url: str) -> bool:
-        """Check if URL is valid."""
-        if not url or not url.startswith('http'):
-            return False
+    def test_search_tools(self) -> dict:
+        """Test all available search tools."""
+        test_query = "artificial intelligence"
+        results = {}
         
-        # Skip unwanted domains
-        unwanted = ['duckduckgo.com', 'google.com', 'bing.com']
-        for domain in unwanted:
-            if domain in url.lower():
-                return False
+        for tool_name, tool in self.search_tools:
+            try:
+                print(f"Testing {tool_name}...")
+                result = self._search_with_tool(tool_name, tool, test_query, 1)
+                results[tool_name] = {
+                    'status': 'success' if result else 'no_results',
+                    'result': result.title[:50] + "..." if result else None
+                }
+            except Exception as e:
+                results[tool_name] = {
+                    'status': 'error',
+                    'error': str(e)
+                }
         
-        return len(url) > 15 and '.' in url
+        return results
+
+def main():
+    """Test the web search service."""
+    print("Testing Web Search Service")
+    print("=" * 40)
     
+    service = WebSearchService()
     
+    # Test search tools
+    print("\n1. Testing search tools...")
+    test_results = service.test_search_tools()
+    for tool, result in test_results.items():
+        status = result['status']
+        if status == 'success':
+            print(f"✅ {tool}: {result['result']}")
+        elif status == 'no_results':
+            print(f"⚠️ {tool}: No results")
+        else:
+            print(f"❌ {tool}: {result.get('error', 'Unknown error')}")
+    
+    # Test actual search
+    print("\n2. Testing actual search...")
+    test_queries = [
+        "liderlik becerileri",
+        "leadership skills",
+        "artificial intelligence trends"
+    ]
+    
+    for query in test_queries:
+        print(f"\nSearching: '{query}'")
+        result = service.search(query)
+        if result:
+            print(f"✅ Found: {result.title}")
+            print(f"   URL: {result.url}")
+            print(f"   Snippet: {result.snippet[:100]}...")
+        else:
+            print("❌ No results found")
+
+if __name__ == "__main__":
+    main()
