@@ -1,11 +1,10 @@
 # src/services/web_search_service.py
-"""Improved web search service with multiple fallback options for Streamlit Cloud."""
+"""Web search service with multiple fallback options for Streamlit Cloud."""
 
-from typing import Optional, List
+from typing import Optional
 from dataclasses import dataclass
 import sys
 from pathlib import Path
-import json
 import time
 import random
 
@@ -41,52 +40,35 @@ class WebSearchService:
         try:
             from duckduckgo_search import DDGS
             self.search_tools.append(('ddgs', DDGS()))
-            print("✅ DuckDuckGo Search (ddgs) initialized")
         except ImportError:
-            print("⚠️ duckduckgo-search not available")
+            pass
         
         # Method 2: LangChain DuckDuckGo
         try:
             from langchain_community.tools import DuckDuckGoSearchRun
             self.search_tools.append(('langchain_ddg', DuckDuckGoSearchRun()))
-            print("✅ LangChain DuckDuckGo initialized")
         except ImportError:
-            print("⚠️ LangChain DuckDuckGo not available")
+            pass
         
         # Method 3: Requests-based fallback
         try:
             import requests
             self.requests = requests
             self.search_tools.append(('requests', 'requests_fallback'))
-            print("✅ Requests fallback initialized")
         except ImportError:
-            print("⚠️ Requests not available")
-        
-        if not self.search_tools:
-            print("❌ No search tools available!")
-        else:
-            print(f"✅ Initialized {len(self.search_tools)} search methods")
+            pass
 
     def search(self, query: str, max_results: int = 3) -> Optional[WebSearchResult]:
         """Search web using available tools with fallbacks."""
-        print(f"🔍 Searching for: '{query}'")
-        
         # Try each search tool in order
         for tool_name, tool in self.search_tools:
-            print(f"🔄 Trying {tool_name}...")
-            
             try:
                 result = self._search_with_tool(tool_name, tool, query, max_results)
                 if result:
-                    print(f"✅ Success with {tool_name}: {result.title[:50]}...")
                     return result
-                else:
-                    print(f"⚠️ {tool_name} returned no results")
-            except Exception as e:
-                print(f"❌ {tool_name} failed: {e}")
+            except Exception:
                 continue
         
-        print("❌ All search methods failed")
         return None
 
     def _search_with_tool(self, tool_name: str, tool, query: str, max_results: int) -> Optional[WebSearchResult]:
@@ -127,8 +109,7 @@ class WebSearchService:
             
             return None
             
-        except Exception as e:
-            print(f"DDGS search error: {e}")
+        except Exception:
             return None
 
     def _search_with_langchain(self, tool, query: str) -> Optional[WebSearchResult]:
@@ -145,8 +126,7 @@ class WebSearchService:
             
             return None
             
-        except Exception as e:
-            print(f"LangChain search error: {e}")
+        except Exception:
             return None
 
     def _search_with_requests(self, query: str) -> Optional[WebSearchResult]:
@@ -191,8 +171,7 @@ class WebSearchService:
             
             return None
             
-        except Exception as e:
-            print(f"Requests search error: {e}")
+        except Exception:
             return None
 
     def _parse_langchain_results(self, search_results: str, query: str) -> Optional[WebSearchResult]:
@@ -233,8 +212,7 @@ class WebSearchService:
             
             return None
             
-        except Exception as e:
-            print(f"Error parsing LangChain results: {e}")
+        except Exception:
             return None
 
     def _clean_text(self, text: str) -> str:
@@ -262,64 +240,3 @@ class WebSearchService:
         text = re.sub(r'[^\w\s\-.,!?()&:;/]', '', text)
         
         return text.strip()
-
-    def test_search_tools(self) -> dict:
-        """Test all available search tools."""
-        test_query = "artificial intelligence"
-        results = {}
-        
-        for tool_name, tool in self.search_tools:
-            try:
-                print(f"Testing {tool_name}...")
-                result = self._search_with_tool(tool_name, tool, test_query, 1)
-                results[tool_name] = {
-                    'status': 'success' if result else 'no_results',
-                    'result': result.title[:50] + "..." if result else None
-                }
-            except Exception as e:
-                results[tool_name] = {
-                    'status': 'error',
-                    'error': str(e)
-                }
-        
-        return results
-
-def main():
-    """Test the web search service."""
-    print("Testing Web Search Service")
-    print("=" * 40)
-    
-    service = WebSearchService()
-    
-    # Test search tools
-    print("\n1. Testing search tools...")
-    test_results = service.test_search_tools()
-    for tool, result in test_results.items():
-        status = result['status']
-        if status == 'success':
-            print(f"✅ {tool}: {result['result']}")
-        elif status == 'no_results':
-            print(f"⚠️ {tool}: No results")
-        else:
-            print(f"❌ {tool}: {result.get('error', 'Unknown error')}")
-    
-    # Test actual search
-    print("\n2. Testing actual search...")
-    test_queries = [
-        "liderlik becerileri",
-        "leadership skills",
-        "artificial intelligence trends"
-    ]
-    
-    for query in test_queries:
-        print(f"\nSearching: '{query}'")
-        result = service.search(query)
-        if result:
-            print(f"✅ Found: {result.title}")
-            print(f"   URL: {result.url}")
-            print(f"   Snippet: {result.snippet[:100]}...")
-        else:
-            print("❌ No results found")
-
-if __name__ == "__main__":
-    main()
