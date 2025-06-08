@@ -1,20 +1,15 @@
 # src/services/rag_service.py
-"""
-Simplified RAG Service with only LLM confidence evaluation.
-"""
+"""RAG service with LLM confidence evaluation."""
 
-from typing import List, Optional
+from typing import Optional
 from dataclasses import dataclass
 import sys
 from pathlib import Path
 import os
 import re
-import traceback
 
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
-
-print("🔍 [DEBUG] Starting rag_service.py import")
 
 # Add src to path for imports
 current_dir = Path(__file__).parent
@@ -22,7 +17,7 @@ src_dir = current_dir.parent
 sys.path.append(str(src_dir))
 
 from core.models import SearchResult, RAGResponse
-from core.config import get_config, get_prompts
+from core.config import get_config
 from services.vector_service import VectorService
 from services.web_search_service import WebSearchService
 
@@ -33,12 +28,11 @@ class RAGConfig:
     api_key: str
     temperature: float = 0.7
     max_tokens: int = 1024
-    # Only LLM confidence threshold
     confidence_threshold: float = 0.3
 
 class RAGService:
     """
-    Simplified RAG service with only LLM confidence evaluation.
+    Simplified RAG service with LLM confidence evaluation.
     
     Flow:
     1. Get single best YouTube content
@@ -50,9 +44,6 @@ class RAGService:
     
     def __init__(self):
         """Initialize RAG service."""
-        print("🔍 [DEBUG] RAGService.__init__ started")
-        print("Initializing simplified RAG Service...")
-        
         # Load configuration
         config = get_config()
         gemini_api_key = config.gemini_api_key or os.getenv("GEMINI_API_KEY")
@@ -65,8 +56,6 @@ class RAGService:
             model_name=config.model_name or "gemini-1.5-flash",
             api_key=gemini_api_key
         )
-        
-        print(f"🔍 [DEBUG] Confidence threshold: {self.config.confidence_threshold}")
         
         # Initialize Gemini AI
         genai.configure(api_key=self.config.api_key)
@@ -158,8 +147,6 @@ Rules:
 Answer:"""
             }
         }
-        
-        print("✅ [DEBUG] RAG Service initialized successfully")
     
     def detect_language(self, text: str) -> str:
         """Detect if text is Turkish or English."""
@@ -244,8 +231,7 @@ Return only the number:"""
             
             return 0.5  # Fallback
             
-        except Exception as e:
-            print(f"❌ [DEBUG] Error evaluating response: {e}")
+        except Exception:
             # Emergency keyword check
             if any(word in response.lower() for word in ['bulunamadı', 'not found']):
                 return 0.0
@@ -253,46 +239,31 @@ Return only the number:"""
 
     def generate_response(self, query: str) -> RAGResponse:
         """Generate response using simplified RAG flow."""
-        print(f"🔍 [DEBUG] generate_response called with: '{query}'")
-        
         try:
             # Detect language
             query_language = self.detect_language(query)
-            print(f"✅ [DEBUG] Query language: {query_language}")
             
             # Get single best YouTube content
             youtube_result = self._get_best_youtube_content(query)
             
             if not youtube_result:
-                print("⚠️ [DEBUG] No YouTube content found, going to web search")
                 return self._web_search_fallback(query, query_language)
-            
-            print(f"✅ [DEBUG] YouTube content found: {youtube_result.video_title[:50]}...")
             
             # Check language compatibility
             content_language = self.detect_language(youtube_result.text_content[:500])
-            print(f"✅ [DEBUG] Content language: {content_language}")
             
             if query_language != content_language:
-                print(f"⚠️ [DEBUG] Language mismatch, going to web search")
                 return self._web_search_fallback(query, query_language)
             
             # Generate answer from YouTube content
-            print("🔍 [DEBUG] Generating answer from YouTube content...")
             rag_answer = self._generate_youtube_answer(query, youtube_result, query_language)
-            print(f"✅ [DEBUG] Answer generated: '{rag_answer[:100]}...'")
             
             # Evaluate answer quality with LLM
-            print("🔍 [DEBUG] Evaluating answer quality...")
             llm_confidence = self.evaluate_response_quality(query, rag_answer, query_language)
-            print(f"✅ [DEBUG] LLM confidence: {llm_confidence}")
             
             # Decision based on LLM confidence
-            print(f"🔍 [DEBUG] Confidence check: {llm_confidence} >= {self.config.confidence_threshold}")
-            
             if llm_confidence >= self.config.confidence_threshold:
                 # High confidence - use YouTube answer
-                print("✅ [DEBUG] Using YouTube answer (high confidence)")
                 return RAGResponse(
                     query=query,
                     answer=rag_answer,
@@ -301,11 +272,9 @@ Return only the number:"""
                 )
             else:
                 # Low confidence - fallback to web search
-                print("⚠️ [DEBUG] Falling back to web search (low confidence)")
                 return self._web_search_fallback(query, query_language)
             
         except Exception as e:
-            print(f"❌ [DEBUG] Error in generate_response: {e}")
             language = self.detect_language(query)
             error_message = (
                 f"Yanıt oluşturulurken hata oluştu: {str(e)}" 
@@ -325,8 +294,7 @@ Return only the number:"""
             # Get only the top 1 result (best match)
             search_results = self.vector_service.search(query, top_k=1)
             return search_results[0] if search_results else None
-        except Exception as e:
-            print(f"❌ [DEBUG] YouTube search error: {e}")
+        except Exception:
             return None
     
     def _generate_youtube_answer(self, question: str, video: SearchResult, language: str) -> str:
@@ -338,8 +306,7 @@ Return only the number:"""
             )
             response = self.llm.invoke(prompt)
             return response.content.strip()
-        except Exception as e:
-            print(f"❌ [DEBUG] Error generating YouTube answer: {e}")
+        except Exception:
             return (
                 "YouTube içeriği işlenirken hata oluştu." 
                 if language == 'turkish' 
@@ -355,8 +322,7 @@ Return only the number:"""
             )
             response = self.llm.invoke(prompt)
             return response.content.strip()
-        except Exception as e:
-            print(f"❌ [DEBUG] Error generating web answer: {e}")
+        except Exception:
             return (
                 "Web içeriği işlenirken hata oluştu." 
                 if language == 'turkish' 
@@ -369,7 +335,6 @@ Return only the number:"""
             web_result = self.web_search_service.search(query)
             
             if web_result:
-                print(f"✅ [DEBUG] Web search result: {web_result.title[:50]}...")
                 web_answer = self._generate_web_answer(query, web_result.snippet, language)
                 
                 # Evaluate web response quality
@@ -404,13 +369,10 @@ Return only the number:"""
                 confidence_score=0.0
             )
             
-        except Exception as e:
-            print(f"❌ [DEBUG] Web search fallback error: {e}")
+        except Exception:
             return RAGResponse(
                 query=query,
-                answer=f"Web search failed: {str(e)}",
+                answer="Web search failed",
                 sources=[],
                 confidence_score=0.0
             )
-
-print("✅ [DEBUG] rag_service.py import completed")
