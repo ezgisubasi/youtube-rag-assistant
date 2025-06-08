@@ -28,7 +28,7 @@ class RAGConfig:
     api_key: str
     temperature: float = 0.7
     max_tokens: int = 1024
-    confidence_threshold: float = 0.3
+    confidence_threshold: float = 0.5
 
 class RAGService:
     """
