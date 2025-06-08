@@ -209,7 +209,36 @@ for result in results:
     print(f"{result.video_title}: {result.similarity_score:.3f}")
 ```
 
-## Usage Examples
+### 5. Test RAG Service
+```python
+from src.services.rag_service import RAGService
+
+# Initialize RAG service
+rag_service = RAGService()
+
+# Test queries in both languages
+test_queries = [
+    "Nasıl etkili lider olunur?",
+    "How to become a successful entrepreneur?", 
+    "Takım motivasyonu stratejileri nelerdir?",
+    "What are the best business strategies?"
+]
+
+# Test each query
+for query in test_queries:
+    print(f"\nQuery: {query}")
+    response = rag_service.generate_response(query)
+    
+    print(f"Answer: {response.answer}")
+    print(f"Confidence: {response.confidence_score:.3f}")
+    print(f"Sources: {len(response.sources)}")
+    
+    # Show source details
+    for source in response.sources:
+        print(f"  - {source.video_title}: {source.similarity_score:.3f}")
+        print(f"    URL: {source.video_url}")
+
+## Question Examples
 
 ### Business Leadership Queries
 ```
