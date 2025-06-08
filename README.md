@@ -350,7 +350,7 @@ streamlit run app.py --server.runOnSave true
 ### Development Setup
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/youtube-rag-assistant.git
+git clone https://github.com/ezgisubasi/youtube-rag-assistant.git
 
 # Create virtual environment
 python -m venv venv
