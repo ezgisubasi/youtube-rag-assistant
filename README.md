@@ -115,7 +115,7 @@ youtube-rag-assistant/
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/yourusername/youtube-rag-assistant.git
+git clone https://github.com/ezgisubasi/youtube-rag-assistant.git
 cd youtube-rag-assistant
 ```
 
