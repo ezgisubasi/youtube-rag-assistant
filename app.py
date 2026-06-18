@@ -79,7 +79,7 @@ def load_services():
     except Exception as e:
         return None, None, str(e)
 
-def display_message(message, tts_service, use_tts):
+def display_message(message, tts_service, use_tts, tts_engine=None):
     """Display chat message with optional TTS."""
     role = message["role"]
     
@@ -99,7 +99,7 @@ def display_message(message, tts_service, use_tts):
             if use_tts and tts_service and tts_service.is_available():
                 if st.button("🔊 Play", key=f"tts_{hash(content)}"):
                     with st.spinner("Generating speech..."):
-                        audio_data = tts_service.generate_speech(content)
+                        audio_data = tts_service.generate_speech(content, engine=tts_engine)
                         if audio_data:
                             audio_html = tts_service.create_audio_player(audio_data)
                             st.markdown(audio_html, unsafe_allow_html=True)
@@ -151,17 +151,29 @@ def main():
         
         # TTS settings
         st.subheader("🔊 Text-to-Speech")
-        if st.session_state.tts_service and st.session_state.tts_service.is_available():
+        tts_service = st.session_state.tts_service
+        tts_engine = None
+        if tts_service and tts_service.is_available():
             use_tts = st.checkbox("Enable TTS", value=True)
+            # Let the user pick which engine generates audio
+            engines = tts_service.available_engines()
+            tts_engine = st.selectbox("TTS Engine", engines, index=0)
             st.success("TTS Ready")
         else:
             use_tts = False
             st.warning("⚠️ TTS unavailable (API key needed)")
             with st.expander("How to enable TTS"):
                 st.markdown("""
-                1. Get API key from [ElevenLabs](https://elevenlabs.io/)
-                2. Add to Streamlit secrets: `ELEVENLABS_API_KEY = "your_key"`
-                3. Restart app
+                Configure at least one provider, then restart the app:
+
+                **ElevenLabs**
+                1. Get an API key from [ElevenLabs](https://elevenlabs.io/)
+                2. Set `ELEVENLABS_API_KEY = "your_key"`
+
+                **60db**
+                1. Get an API key from [60db](https://60db.ai/)
+                2. Set `SIXTYDB_API_KEY = "your_key"`
+                3. Optional: `SIXTYDB_VOICE_ID = "voice-uuid"` (omit for the default voice)
                 """)
         
         # Stats
@@ -218,7 +230,7 @@ def main():
     
     # Display messages
     for message in st.session_state.messages:
-        display_message(message, st.session_state.tts_service, use_tts)
+        display_message(message, st.session_state.tts_service, use_tts, tts_engine)
     
     # Chat input
     if prompt := st.chat_input("Ask about leadership or business..."):

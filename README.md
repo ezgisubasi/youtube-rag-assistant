@@ -15,9 +15,10 @@ A professional AI-powered chatbot that provides intelligent responses using YouT
 - **Source Attribution**: Every response includes video source, confidence score, and clickable YouTube links
 
 ### Text-to-Speech Integration
-- **Professional Voice Synthesis**: ElevenLabs API integration with multilingual support
+- **Dual Provider Support**: Choose between **ElevenLabs** and **60db** from the sidebar — both behind one consistent interface
+- **Professional Voice Synthesis**: Multilingual voice synthesis with high-quality output (MP3)
 - **One-click Audio**: Generate speech for any response with a single button
-- **Optimized Performance**: Efficient audio streaming and caching
+- **Graceful Fallback**: If the selected engine isn't configured, the first available one is used automatically
 
 ### Multilingual Support
 - **Turkish & English**: Automatic language detection and appropriate response generation
@@ -39,8 +40,8 @@ A professional AI-powered chatbot that provides intelligent responses using YouT
 ```
 YouTube Playlist → Audio Download → Transcription → Vector Store → RAG → TTS → Web Interface
      ↓                   ↓             ↓              ↓             ↓     ↓         ↓
-  pytubefix        OpenAI Whisper    BGE-M3         Qdrant    Gemini AI  Elevenlabs Streamlit
-                                                      ↓
+  pytubefix        OpenAI Whisper    BGE-M3         Qdrant    Gemini AI  ElevenLabs Streamlit
+                                                      ↓                  / 60db
                                                   Web Search Fallback
                                                       ↓
                                                     DuckDuckGo API
@@ -98,6 +99,7 @@ youtube-rag-assistant/
 ### AI & ML
 - **OpenAI Whisper**: Audio transcription with multilingual support
 - **ElevenLabs API**: Professional text-to-speech synthesis
+- **60db API**: Alternative text-to-speech synthesis (synchronous `/tts-synthesize`)
 - **BGE-M3**: State-of-the-art multilingual embedding model
 - **Sentence Transformers**: Text similarity and semantic search
 
@@ -132,7 +134,11 @@ cp .env.template .env
 # Add your API keys
 export GEMINI_API_KEY="your_gemini_api_key_here"
 export HF_TOKEN="your_huggingface_api_key_here"
-export ELEVENLABS_API_KEY="your_elevenlabs_api_key_here"  # Optional for TTS
+
+# TTS providers (optional — configure one or both)
+export ELEVENLABS_API_KEY="your_elevenlabs_api_key_here"
+export SIXTYDB_API_KEY="your_60db_api_key_here"
+export SIXTYDB_VOICE_ID="your_60db_voice_uuid_here"  # optional, omit for default voice
 ```
 
 ### 4. Run Application
@@ -150,8 +156,10 @@ The application will be available at `http://localhost:8501`
 GEMINI_API_KEY=your_gemini_api_key_here
 HF_TOKEN=your_huggingface_api_key_here
 
-# Optional (for TTS features)
+# Optional (for TTS features — configure one or both providers)
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+SIXTYDB_API_KEY=your_60db_api_key_here
+SIXTYDB_VOICE_ID=your_60db_voice_uuid_here   # optional, omit for the default 60db voice
 
 # Optional (override default playlist)
 YOUTUBE_PLAYLIST_URL=https://youtube.com/playlist?list=your_playlist_id
@@ -256,10 +264,21 @@ The system evaluates each response using LLM confidence scoring:
 ```
 
 ### Professional TTS Integration
-- **Voice Quality**: ElevenLabs multilingual voice synthesis
-- **Performance**: Optimized audio streaming
+- **Two Providers, One Interface**: ElevenLabs and 60db share a common `BaseTTSService` interface and a `TTSManager` router, so the app never branches on which engine ran
+- **Sidebar Engine Picker**: A "TTS Engine" dropdown lists only the providers that have a configured API key
+- **Consistent Output**: Both engines return MP3 bytes rendered by the same inline HTML5 audio player (60db's base64 JSON response is decoded transparently)
 - **Accessibility**: One-click speech generation
-- **Fallback**: Graceful degradation when TTS unavailable
+- **Fallback**: Graceful degradation when TTS unavailable; if the chosen engine fails, the first available one is used
+
+#### How to use TTS
+1. Set `ELEVENLABS_API_KEY` and/or `SIXTYDB_API_KEY` (optionally `SIXTYDB_VOICE_ID`) in your environment or Streamlit secrets, then restart.
+2. In the sidebar, enable **TTS** and pick an engine from the **TTS Engine** dropdown.
+3. Click **🔊 Play** under any assistant response to synthesize and play the audio.
+
+| Provider | Endpoint | Auth | Voice | Output |
+|----------|----------|------|-------|--------|
+| ElevenLabs | `POST /v1/text-to-speech/{voice_id}` | `xi-api-key` header | Adam (`pNInz6obpgDQGcFmaJgB`) | raw MP3 bytes |
+| 60db | `POST https://api.60db.ai/tts-synthesize` | `Authorization: Bearer` | `SIXTYDB_VOICE_ID` (optional; default if unset) | base64 JSON → decoded to MP3 |
 
 ## Deployment
 
@@ -271,6 +290,8 @@ The system evaluates each response using LLM confidence scoring:
    GEMINI_API_KEY = "your_api_key"
    HF_TOKEN="your_huggingface_api_key"
    ELEVENLABS_API_KEY = "your_elevenlabs_key"
+   SIXTYDB_API_KEY = "your_60db_key"
+   SIXTYDB_VOICE_ID = "your_60db_voice_uuid"   # optional
    ```
 4. Deploy automatically
 
@@ -284,6 +305,8 @@ docker run -p 8501:8501 \
   -e GEMINI_API_KEY="your_key" \
   -e HF_TOKEN="your_huggingface_api_key" \
   -e ELEVENLABS_API_KEY="your_elevenlabs_key" \
+  -e SIXTYDB_API_KEY="your_60db_key" \
+  -e SIXTYDB_VOICE_ID="your_60db_voice_uuid" \
   youtube-rag-assistant
 ```
 
@@ -376,6 +399,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **OpenAI Whisper**: High-quality multilingual transcription
 - **Google Gemini**: Advanced language model capabilities
 - **ElevenLabs**: Professional text-to-speech synthesis
+- **60db**: Alternative text-to-speech synthesis
 - **Streamlit**: Rapid web application development
 - **LangChain**: Comprehensive RAG framework
 - **Qdrant**: High-performance vector database
